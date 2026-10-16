@@ -38,6 +38,11 @@ cd frontend && npm run dev      # :5173, proxies /api and /actuator to :8080
 cd frontend && npm run build    # type/compile check
 ```
 
+## Email in dev
+Without `spring.mail.host` the app writes invoice emails to the log instead of sending them
+(look for the `Mailer` log lines). Never point dev at a real SMTP server with real member
+addresses.
+
 ## Verifying a change
 - Backend logic: a test, then `./gradlew test`.
 - API: `bootRun` + `curl` against `localhost:8080/api/...` (session login first when secured).

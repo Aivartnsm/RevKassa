@@ -1,6 +1,6 @@
 ---
 name: add-feature
-description: Build a RevKassa feature end to end — JPA entity, repository, service, REST controller, tests and the Vue screen. Use when implementing anything from docs/PLAN.md (products, stock, purchases, payments, members, admin screens).
+description: Build a RevKassa feature end to end — JPA entity, repository, service, REST controller, tests and the Vue screen. Use when implementing anything from docs/PLAN.md (products, stock, purchases, payments, members, fees, invoices, levels, events, budget, assistant, admin screens).
 ---
 
 # Building a feature slice
@@ -31,6 +31,17 @@ Read `docs/PLAN.md` (rules, API sketch, milestones) and `docs/DB-MODEL.md` first
 - Ledger rows are never updated or deleted; corrections are new rows.
 - Copy `unit_price_cents` onto purchase lines. One price list; guests buy on
   the hosting member's account (no guest accounts), and there is no tab limit.
+- Membership fees are charged to the balance through `AccountService.post` like any other
+  entry; one `membership_charge` per member per month (unique), waivers are new entries.
+- Event fees go on the balance via `AccountService.post` (`EVENT_FEE`, reversed with
+  `EVENT_FEE_REVERSAL`); budget lines never touch balances or stock.
+- The AI assistant is optional and admin-only: go through `EventAssistant`, send only event
+  data (never member names, emails or balances), never write anything without the admin
+  accepting it. Tests use a fake assistant; never call the real API in tests.
+- UI text, emails and API error `detail` messages are Estonian; code, enums, DB and API
+  field names English.
+- Invoice emails never change a balance. Send through the `Mailer` interface only (logs
+  instead of sending when `spring.mail.host` is unset); tests use a fake `Mailer`.
 - Auth: members log in with a unique 6-digit PIN only (stored as `pin_hmac`, never plain or
   logged); PIN login is rate-limited; PIN sessions expire after 1 minute idle on every device. `/api/admin/**` requires the separate email + password
   admin login — a PIN session never reaches admin endpoints.
@@ -46,9 +57,10 @@ Read `docs/PLAN.md` (rules, API sketch, milestones) and `docs/DB-MODEL.md` first
 - API calls through one `api.js` wrapper (`fetch`, JSON, CSRF header, throws on non-2xx
   with the ProblemDetail `detail` message). No direct `fetch` in components.
 - Member views (`views/member/`) are **mobile-first**: write base CSS for a ~390px phone,
-  add `@media (min-width: 768px)` rules for the tablet; never the other way round. Single
+  add `@media (min-width: 1024px)` rules for the 11" landscape bar tablet (~1280×800 CSS px:
+  drink grid + always-visible order panel); never the other way round. Single
   column, bottom tab bar, sticky bottom action bar, buttons ≥ 44px, `inputmode` on numeric
-  inputs, no hover-only affordances. Check at 390px wide first.
+  inputs, no hover-only affordances. Check at 390px wide first, then 1280×800.
 - Admin views (`views/admin/`) are desktop-first but must not break at phone width (tables
   scroll in an `overflow-x: auto` box, toolbars wrap).
 - Money via one `formatEuro(cents)` helper (`et-EE` locale, `€`).
