@@ -1,6 +1,6 @@
 # RevKassa — frontendi taskid
 
-Vue 3 + Vite kaustas `frontend/`. Vaated järgivad "RevKassa Mockups" lõuendit; API kuju tuleb
+Vue 3 + Vite kaustas `frontend/`. Vaated järgivad "RevKassa Mockups" lõuendit ([ekraanide register](mockupid/loudend.md)); API kuju tuleb
 failist [PLAN.md](PLAN.md), backendi töö failist [BACKEND-TASKS.md](BACKEND-TASKS.md) (`B..` allpool).
 Suurus: S ≈ tunnid, M ≈ päev, L ≈ paar päeva.
 
@@ -55,7 +55,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F04 · PIN-i klahvistik** (M) — vajab B04, B05
   `PinView.vue`: kuus täppi, 3×4 klahvistik (C, 0, ⌫), automaatne saatmine 6. numbri järel,
-  vale PIN-i teade, lukustuse teade loenduriga (`errorCode` järgi), töötavad ka klaviatuuri numbrid.
+  vale PIN-i teade ("Veel N katset enne lukustust"), lukustuse teade loenduriga (429 + `Retry-After`;
+  klahvistik keelatud, näitab ka järgmise lukustuse pikkust), töötavad ka klaviatuuri numbrid.
   Õnnestumine → `/buy`.
   Valmis, kui: backendi vastu testitud, k.a lukustus.
 
@@ -109,17 +110,24 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Saldokaart ("Sinu võlg" / "Sinu ettemaks"), ootel maksed, ajalugu nupuga "Laadi veel".
   Tahvel: vasakul saldo ja maksevorm, paremal ootel maksed ja ajalugu.
 
+- [ ] **F29 · PIN-i muutmine** (S) — vajab B34
+  Konto lehel nupp "Muuda PIN-koodi" → vorm: praegune PIN, uus PIN, uus PIN uuesti (numbriklaviatuur,
+  peidetud sisestus). Frontendis kontroll: 6 numbrit, uued kattuvad. Õnnestumisel teade
+  "PIN-kood muudetud", vead backendi `message` järgi.
+
 - [ ] **F14 · Maksa või maksa ette** (S) — vajab B15
   Makseviisi valik (pangaülekanne / kaart), summa eurodes, valikuline viide; kinnitusteade;
   ilmub "Ootab kinnitust" alla.
 
 - [ ] **F15 · Admin: maksed** (S) — vajab B16
   Ootel maksete nimekiri nuppudega Kinnita / Lükka tagasi (valikuline märkus); arvu märk admini menüüs.
+  "Sisesta makse": liige, makseviis, summa, selgitus → salvestub kohe kinnitatuna, saldo uueneb.
 
 - [ ] **F16 · Admin: liikmed** (M) — vajab B17
   Nimekiri saldo ja staatusega; e-posti ja tasust vabastuse väljad; liikme lisamine ja PIN-i
   lähtestamine näitavad uut PIN-i dialoogis **üks kord**; saldo parandus (summa + kohustuslik
-  põhjus); rolli/aktiivsuse muutmine (adminiks tegemisel e-post + parool).
+  põhjus); rolli/aktiivsuse muutmine (adminiks tegemisel e-post + parool); "Ostud": liikme
+  ostude nimekiri, "Tühista ost" (kinnitusega) võtab ostu tagasi (vajab ka B12).
 
 ## Verstapost 5 — Admini ülevaade
 

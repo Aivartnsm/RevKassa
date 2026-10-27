@@ -13,7 +13,7 @@ inglise keeles; dokumentatsioon on eesti keeles.
 Andmemudel: [DB-MODEL.md](DB-MODEL.md). Taskid: [backend](BACKEND-TASKS.md), [frontend](FRONTEND-TASKS.md).
 Konventsioonid: [backend/CLAUDE.md](../backend/CLAUDE.md), [backendi struktuur](backend/projekti-struktuur.md),
 [frontendi struktuur](frontend/projekti-struktuur.md), [Vue komponent](frontend/vue-komponendi-struktuur.md).
-Mockupid: "RevKassa Mockups" disainilõuend.
+Mockupid: "RevKassa Mockups" disainilõuend — vt [mockupid/loudend.md](mockupid/loudend.md) (link, lugemise juhend, ekraanide register).
 
 ## Ulatus (v1)
 
@@ -58,11 +58,15 @@ iseregistreerimine (organisatsiooni liikmeks), liikme enda ürituselt loobumine,
 
 Sisselogimine
 - Liige logib sisse, sisestades klahvistikul oma PIN-i. PIN üksi tuvastab liikme, seega on
-  PIN-id **unikaalsed**, täpselt **6 numbrit** ning admin valib / lähtestab need (liige saab
-  hiljem ise muuta). PIN salvestatakse HMAC-SHA256-na serveri salajase võtmega, et
+  PIN-id **unikaalsed**, täpselt **6 numbrit**. Admin määrab / lähtestab PIN-i ja liige saab
+  oma PIN-i ise muuta konto lehel (praegune PIN + uus kaks korda; uus peab olema unikaalne ja
+  eelmisest erinev). PIN salvestatakse HMAC-SHA256-na serveri salajase võtmega, et
   sisselogimisel saaks liikme selle järgi üles leida ilma PIN-i ennast salvestamata.
-- Jõurünnaku kaitse: pärast 5 valet PIN-i samast seadmest/IP-st lukustub klahvistik
-  1 minutiks (iga kordusega kahekordistub). Õnnestunud sisselogimised ja lukustused logitakse.
+- Jõurünnaku kaitse samast seadmest/IP-st: pärast 5 valet PIN-i lukustub klahvistik
+  **1 minutiks**. Pärast lukustust lukustab **iga järgmine** vale PIN uuesti, iga kord
+  pikemalt: **5 min → 10 min → 30 min → 1 h → 1 päev**, edasi jääb 1 päev. Õnnestunud
+  sisselogimine nullib loenduri ja taseme. Lukustuse ajal klahvistik ei võta sisestust vastu
+  ja näitab järelejäänud aega. Õnnestunud sisselogimised ja lukustused logitakse.
 - PIN-sessioon lõpeb "Logi välja" / "Valmis, logi mind välja" peale või pärast **1 minutit
   tegevusetust** igas seadmes (ühine tahvel ja isiklikud telefonid). Seda jõustab server
   (sessiooni aegumine) ja peegeldab UI, mis naaseb PIN-i klahvistikule.
@@ -220,6 +224,7 @@ AI abiline (valikuline)
 | `POST /api/auth/admin` | admin | `{email, password}` → admini sessioon |
 | `POST /api/auth/logout` | kõik | lõpeta sessioon |
 | `GET /api/me` | liige | profiil ja saldo |
+| `PUT /api/me/pin` | liige | `{currentPin, newPin}` — muuda oma PIN-i |
 | `GET /api/products` | liige | aktiivsed tooted hinna ja laoseisuga |
 | `POST /api/purchases` | liige | `{lines:[{productId, quantity}]}` → ost |
 | `POST /api/purchases/{id}/undo` | liige (oma, ≤10 min) / admin | võta ost tagasi |
@@ -236,7 +241,9 @@ AI abiline (valikuline)
 | `POST /api/admin/stock/write-offs` | admin | katki / aegunud |
 | `GET /api/admin/payments?status=PENDING` | admin | kinnitamist ootavad maksed |
 | `POST /api/admin/payments/{id}/confirm`, `/reject` | admin | otsusta makse üle |
+| `POST /api/admin/payments` | admin | `{memberId, amountCents, method, reference}` → makse kohe `CONFIRMED` |
 | `GET/POST/PUT /api/admin/members` | admin | liikmed ja rollid |
+| `GET /api/admin/members/{id}/purchases` | admin | liikme ostud, uuemad ees (tagasivõtmine: `POST /api/purchases/{id}/undo`) |
 | `POST /api/admin/members/{id}/pin` | admin | määra või lähtesta liikme PIN |
 | `POST /api/admin/members/{id}/adjustments` | admin | käsitsi saldo parandus märkusega |
 | `GET /api/admin/fees` | admin | praegune tasu taseme kaupa ja ajalugu |

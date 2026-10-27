@@ -47,10 +47,14 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   aegumised, PIN-sessiooni keelu `/api/admin/**` all ja mitteaktiivse liikme keelu.
 
 - [ ] **B05 · PIN-i jõurünnaku lukustus** (S) — pärast B04
-  Kliendi IP kaupa: pärast 5 valet PIN-i lukusta 1 minutiks, iga kordusega kahekordistub;
-  õnnestumisel lähtesta. Mälus hoidmine sobib (üks instants). Logi ebaõnnestumised ja
-  lukustused ilma PIN-ita. Lukustuse `ApiError` sisaldab `errorCode`-i, mille järgi UI näitab loendurit.
-  Valmis, kui: testid läbivad lukustuse, kahekordistumise ja lähtestamise fikseeritud `Clock`-iga.
+  Kliendi IP kaupa: pärast 5 valet PIN-i lukusta 1 minutiks; pärast seda lukustab iga järgmine
+  vale PIN uuesti, tasemed 5 min → 10 min → 30 min → 1 h → 1 päev (edasi 1 päev). Õnnestumisel
+  nulli loendur ja tase. Lukustuse ajal ei kontrollita PIN-i üldse. Mälus hoidmine sobib (üks
+  instants). Logi ebaõnnestumised ja lukustused ilma PIN-ita. Lukustatud päring → 429, `ApiError`
+  oma `errorCode`-iga ja `Retry-After` päis (sekundid), mille järgi UI näitab loendurit.
+  Valmis, kui: fikseeritud `Clock`-iga testid läbivad esimese lukustuse 5. vea järel, iga
+  taseme pikkuse, 1 päeva lae, lukustuse ajal tehtud katse (ei pikenda ega kontrolli PIN-i) ja
+  nullimise õnnestumisel.
 
 - [ ] **B06 · Esimese admini loomine** (S) — pärast B03
   Käivitumisel, kui ühtegi adminit pole, loo üks seadetest `revkassa.bootstrap.admin-email`,
@@ -119,14 +123,28 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 - [ ] **B16 · Maksete kinnitamine / tagasilükkamine** (S) — pärast B15
   `GET /api/admin/payments?status=PENDING`; `POST /api/admin/payments/{id}/confirm` kirjutab
   ühe `PAYMENT` rea; `/reject` valikulise märkusega. Teist korda otsustamine → `ForbiddenException`.
-  Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta.
+  `POST /api/admin/payments` `{memberId, amountCents > 0, method, reference?}`: admin sisestab
+  makse, mis salvestatakse kohe `CONFIRMED` (`decided_by` = admin) koos ühe `PAYMENT` reaga.
+  Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta, ka admini sisestatud makse puhul.
 
 - [ ] **B17 · Liikmete haldus** (M) — pärast B04, B10
   `GET/POST/PUT /api/admin/members` (nimi, e-post, roll, aktiivne, tasust vabastus; adminil
   e-post + parool kohustuslik, liikmel e-post valikuline).
   Loomine ja `POST /api/admin/members/{id}/pin` tagastavad uue PIN-i vastuses **üks kord**.
   `POST /api/admin/members/{id}/adjustments` (nullist erinev summa, kohustuslik märkus).
-  Valmis, kui: admini reeglid, PIN-i lähtestamine (vana PIN kehtetu) ja parandused on testitud.
+  `GET /api/admin/members/{id}/purchases?page=` (pärast B12): liikme ostud uuemad ees — aeg,
+  read ("2 × Saku Originaal"), summa, staatus; admin võtab ostu tagasi olemasoleva
+  `POST /api/purchases/{id}/undo` kaudu.
+  Valmis, kui: admini reeglid, PIN-i lähtestamine (vana PIN kehtetu), parandused ja ostude
+  nimekiri (k.a tagasivõetud ost) on testitud.
+
+- [ ] **B34 · Liige muudab oma PIN-i** (S) — pärast B05
+  `PUT /api/me/pin` `{currentPin, newPin}`: praegune PIN peab klappima (vale → `ForbiddenException`
+  ja loeb B05 lukustuse loendurisse), uus täpselt 6 numbrit (400), eelmisest erinev ja unikaalne
+  (võetud → `ForbiddenException`, teade ei ütle, kellele see kuulub). Uuendab `pin_hmac` ja
+  `pin_changed_at`; PIN-e ei logita.
+  Valmis, kui: õnnestumine (vana PIN kehtetu, uus töötab), vale praegune PIN, vale formaat, sama
+  PIN ja võetud PIN on testitud.
 
 ## Verstapost 5 — Admini ülevaade
 
