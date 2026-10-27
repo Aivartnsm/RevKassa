@@ -1,50 +1,53 @@
 ---
 name: run-revkassa
-description: Start, build, test or check the RevKassa app locally (PostgreSQL in WSL, Spring Boot backend, Vue/Vite frontend). Use when asked to run the app, run tests, see a change working, or when the DB/Gradle won't start.
+description: Käivita, ehita, testi või kontrolli RevKassa rakendust lokaalselt (PostgreSQL WSL-is, Spring Boot backend kaustas backend/, Vue/Vite frontend kaustas frontend/). Kasuta, kui on vaja rakendus käivitada, teste jooksutada, muudatust töös näha või kui andmebaas/Gradle ei käivitu.
 ---
 
-# Running RevKassa
+# RevKassa käivitamine
 
-Project root: the folder with `build.gradle`. Frontend: `frontend/`.
+Projekti juurkaust: kaust, kus on `backend/`, `frontend/` ja `docs/`.
+Backend: `backend/` (Gradle). Frontend: `frontend/`.
 
-## Environment gotchas
-- Windows sets `JAVA_HOME` to a Windows JDK that WSL can't run. `~/.bashrc` fixes it, but
-  non-interactive shells (like Claude's Bash tool) don't load it. Prefix Gradle commands:
-  `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew ...`
-- The user also runs things from IntelliJ on Windows (Windows JDK, `gradlew.bat`). Don't
-  change IntelliJ config.
-- `frontend/node_modules` is platform-specific. If `npm run dev` fails with a missing native
-  binding, it was installed from the other OS: delete `node_modules` and `npm install` again.
+## Keskkonna lõksud
+- Windows seab `JAVA_HOME`-iks Windowsi JDK, mida WSL käivitada ei saa. `~/.bashrc` parandab
+  selle, aga mitteinteraktiivsed shellid (nagu Claude'i Bash tööriist) seda ei lae. Lisa
+  Gradle käskude ette: `JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew ...`
+- Kasutaja käivitab asju ka IntelliJ-st Windowsis (Windowsi JDK, `gradlew.bat`). Gradle projekt
+  on IntelliJ-s seotud kaustaga `backend/`. Ära muuda IntelliJ seadeid.
+- `frontend/node_modules` on platvormipõhine. Kui `npm run dev` kukub puuduva natiivse sidumise
+  tõttu, on see paigaldatud teisest OS-ist: kustuta `node_modules` ja tee uuesti `npm install`.
 
-## 1. Database (PostgreSQL 16, systemd service in WSL)
+## 1. Andmebaas (PostgreSQL 16, systemd teenus WSL-is)
 ```bash
 systemctl is-active postgresql || sudo systemctl start postgresql
 PGPASSWORD=revkassa psql -h localhost -U revkassa -d revkassa -c 'select 1'
 ```
-DB, user and password are all `revkassa`. Windows reaches it at `localhost:5432`.
-Flyway applies migrations on app start; never create tables by hand.
+Andmebaas, kasutaja ja parool on kõik `revkassa`. Windows ulatub selleni aadressil `localhost:5432`.
+Skeem tuleb failidest `docs/database/1_drop.sql`, `2_create.sql`, `3_import.sql` (vt skill
+`muuda-andmebaasi-skeemi`). Kui tabelid puuduvad, küsi kasutajalt enne skriptide käivitamist —
+`1_drop.sql` kustutab kõik andmed.
 
 ## 2. Backend
 ```bash
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew test        # tests (need the DB)
+cd backend
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew test        # testid (vajavad andmebaasi)
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew bootRun     # :8080
 ```
-Run `bootRun` in the background and wait for `curl -s localhost:8080/actuator/health`
-to return `{"status":"UP"}`. Stop it when done.
+Käivita `bootRun` taustal ja oota, kuni `curl -s localhost:8080/actuator/health` tagastab
+`{"status":"UP"}`. Swagger UI: `http://localhost:8080/swagger-ui/index.html`. Peata see, kui oled valmis.
 
 ## 3. Frontend
 ```bash
-cd frontend && npm run dev      # :5173, proxies /api and /actuator to :8080
-cd frontend && npm run build    # type/compile check
+cd frontend && npm run dev      # :5173, suunab /api ja /actuator pordile :8080
+cd frontend && npm run build    # kompileerimise kontroll
 ```
 
-## Email in dev
-Without `spring.mail.host` the app writes invoice emails to the log instead of sending them
-(look for the `Mailer` log lines). Never point dev at a real SMTP server with real member
-addresses.
+## E-post arenduses
+Ilma `spring.mail.host`-ita kirjutab rakendus arve e-kirjad logisse (otsi `Mailer` logiridu).
+Ära kunagi suuna arendust päris SMTP serverile päris liikmete aadressidega.
 
-## Verifying a change
-- Backend logic: a test, then `./gradlew test`.
-- API: `bootRun` + `curl` against `localhost:8080/api/...` (session login first when secured).
-- UI: both servers running, then open `http://localhost:5173`.
-Report what you actually ran and its output; say so if something could not be verified.
+## Muudatuse kontrollimine
+- Backendi loogika: test, siis `./gradlew test`.
+- API: `bootRun` + `curl` aadressil `localhost:8080/api/...` (turvatud teedel enne sisselogimine) või Swagger UI.
+- UI: mõlemad serverid töötavad, siis ava `http://localhost:5173`.
+Teata, mida päriselt käivitasid ja mis oli väljund; ütle, kui midagi ei saanud kontrollida.

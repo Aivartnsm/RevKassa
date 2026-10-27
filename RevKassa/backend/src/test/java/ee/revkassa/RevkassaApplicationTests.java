@@ -1,10 +1,10 @@
-package com.example.RevKassa;
+package ee.revkassa;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class RevKassaApplicationTests {
+class RevkassaApplicationTests {
 
 	@Test
 	void contextLoads() {

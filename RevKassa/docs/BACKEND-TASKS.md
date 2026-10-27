@@ -1,235 +1,258 @@
-# RevKassa — backend tasks
+# RevKassa — backendi taskid
 
-Work top to bottom; each task is one reviewable change with its tests. Rules and API shapes
-come from [PLAN.md](PLAN.md), tables from [DB-MODEL.md](DB-MODEL.md). Size: S ≈ hours,
-M ≈ a day, L ≈ a few days. Task numbers are ids, not order. Tick the box when "Done when" holds and `./gradlew test` passes.
+Tee ülevalt alla; iga task on üks ülevaadatav muudatus koos testidega. Reeglid ja API kuju
+tulevad failist [PLAN.md](PLAN.md), tabelid failist [DB-MODEL.md](DB-MODEL.md), konventsioonid
+failidest [backend/CLAUDE.md](../backend/CLAUDE.md) ja [backendi struktuur](backend/projekti-struktuur.md).
+Suurus: S ≈ tunnid, M ≈ päev, L ≈ paar päeva. Tasknumbrid on id-d, mitte järjekord.
+Märgi linnuke, kui "Valmis, kui" kehtib ja `./gradlew test` (kaustas `backend/`) läbib.
 
-## Milestone 1 — Foundation
+Detailne task (taskifail kaustas `docs/tasks/backend/`) tehakse skilliga `skill-loo-backend-task`,
+implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`.
 
-- [ ] **B01 · Initial schema** (M)
-  `V1__init.sql` with all 16 tables (incl. the 5 seeded membership levels), checks, FKs and indexes exactly as in DB-MODEL.md.
-  Done when: the app starts with `ddl-auto=validate`; a test asserts every table exists.
+Ärireegli rikkumine (nt "tagasivõtmise aeg on möödas", "juba kinnitatud") visatakse
+`ForbiddenException`-ina koos `Error` enum'i väärtusega; puuduv kirje on
+`PrimaryKeyNotFoundException`; vananenud `version` on 409.
 
-- [ ] **B02 · Common plumbing** (S) — after B01
-  `common` package: domain exceptions (`NotFound`, `Conflict`, `Forbidden`) mapped to
-  `ProblemDetail` by a `@RestControllerAdvice`, validation errors as 400 with field list,
-  a `Clock` bean (tests control time), JSON config (timestamps ISO-8601, money as integer cents).
-  Error `detail` texts are **Estonian** (the UI shows them), kept in one `Messages` class.
-  Done when: a `@WebMvcTest` proves each exception's status and body.
+## Verstapost 1 — Alus
 
-- [ ] **B03 · Member entity and PIN hashing** (M) — after B01
-  `Member` entity + repository. `PinService`: HMAC-SHA256 with secret from
-  `revkassa.pin-secret` (env var, app refuses to start without it), `generateUniquePin()`
-  (6 digits, retries on collision), `findByPin()`. PINs never logged.
-  Done when: tests cover hashing, uniqueness retry, and lookup.
+- [ ] **B01 · Andmebaasi skriptid ja sõltuvused** (M)
+  `docs/database/1_drop.sql`, `2_create.sql` (kõik 16 tabelit, piirangud, FK-d, indeksid täpselt
+  nagu DB-MODEL.md-s, k.a 5 liikmetaset) ja `3_import.sql` (näidisliikmed, -tooted, -tarned).
+  `build.gradle`-sse MapStruct (+ `lombok-mapstruct-binding`) ja springdoc-openapi (Swagger UI).
+  Valmis, kui: skriptid jooksevad tühjale andmebaasile vigadeta, rakendus käivitub
+  `ddl-auto=validate`-ga, Swagger UI avaneb ja test kontrollib, et kõik tabelid on olemas.
 
-- [ ] **B04 · Security and login** (L) — after B02, B03
-  Spring Security with session cookie + CSRF (cookie token for the SPA).
-  `POST /api/auth/pin` → member session, idle timeout **1 min**;
-  `POST /api/auth/admin` (email + bcrypt password) → admin session, idle timeout **30 min**;
-  `POST /api/auth/logout`. `/api/admin/**` needs an admin-login session — a PIN session of an
-  admin is still only a member session. `GET /api/me` (name, role, balance).
-  Done when: MockMvc tests cover both logins, wrong credentials, timeouts set per session,
-  PIN session denied on `/api/admin/**`, inactive member denied.
+- [ ] **B02 · Infrastruktuur ja vead** (S) — pärast B01
+  `infrastructure/`: `ApiError { message, errorCode }`, `Error` enum (eestikeelsed sõnumid +
+  koodid), `PrimaryKeyNotFoundException`, `DataNotFoundException`, `ForbiddenException`,
+  `RestExceptionHandler` (`@RestControllerAdvice`, valideerimisvead 400 koos väljadega,
+  optimistlik lukk 409). `Clock` bean (testid kontrollivad aega), JSON seaded (ajatemplid
+  ISO-8601, raha täisarvuliste sentidena).
+  Valmis, kui: `@WebMvcTest` tõestab iga erindi staatuse ja `ApiError` keha.
 
-- [ ] **B05 · PIN brute-force lockout** (S) — after B04
-  Per client IP: after 5 wrong PINs lock for 1 min, doubling on each repeat; reset on success.
-  In-memory is fine (single instance). Log failures and lockouts without the PIN.
-  Done when: tests drive the lock, the doubling and the reset with a fixed `Clock`.
+- [ ] **B03 · Liikme entiteet ja PIN-i räsi** (M) — pärast B01
+  `Member` entiteet + repository (`persistence/member/`). `PinService`
+  (`infrastructure/security/`): HMAC-SHA256 võtmega `revkassa.pin-secret` (keskkonnamuutuja,
+  ilma selleta rakendus ei käivitu), `generateUniquePin()` (6 numbrit, kokkupõrkel uus katse),
+  `findByPin()`. PIN-e ei logita kunagi.
+  Valmis, kui: testid katavad räsi, unikaalsuse uue katse ja otsingu.
 
-- [ ] **B06 · First admin bootstrap** (S) — after B03
-  On startup, if no admin exists, create one from `revkassa.bootstrap.admin-email`,
-  `-password`, `-name` (env vars) and log its generated PIN once. No credentials in migrations.
-  Done when: test shows it runs once and is skipped when an admin exists.
+- [ ] **B04 · Turvalisus ja sisselogimine** (L) — pärast B02, B03
+  Spring Security sessiooniküpsise + CSRF-iga (küpsise token SPA jaoks, `XSRF-TOKEN`).
+  `POST /api/auth/pin` → liikme sessioon, aegumine **1 min**;
+  `POST /api/auth/admin` (e-post + bcrypt parool) → admini sessioon, aegumine **30 min**;
+  `POST /api/auth/logout`. `/api/admin/**` nõuab admini sisselogimise sessiooni — admini
+  PIN-sessioon on ikkagi ainult liikme sessioon. `GET /api/me` (nimi, roll, saldo).
+  Valmis, kui: MockMvc testid katavad mõlemad sisselogimised, valed andmed, sessiooni
+  aegumised, PIN-sessiooni keelu `/api/admin/**` all ja mitteaktiivse liikme keelu.
 
-## Milestone 2 — Products & stock
+- [ ] **B05 · PIN-i jõurünnaku lukustus** (S) — pärast B04
+  Kliendi IP kaupa: pärast 5 valet PIN-i lukusta 1 minutiks, iga kordusega kahekordistub;
+  õnnestumisel lähtesta. Mälus hoidmine sobib (üks instants). Logi ebaõnnestumised ja
+  lukustused ilma PIN-ita. Lukustuse `ApiError` sisaldab `errorCode`-i, mille järgi UI näitab loendurit.
+  Valmis, kui: testid läbivad lukustuse, kahekordistumise ja lähtestamise fikseeritud `Clock`-iga.
 
-- [ ] **B07 · Products** (M) — after B04
-  `Product` entity. `GET /api/products` (active only, by `sort_order`, with price and stock).
-  Admin: `GET/POST/PUT /api/admin/products` (name, style, volume, price, low-stock threshold,
-  sort order, active). Price > 0; optimistic locking on update (409 on stale version).
-  Done when: CRUD, validation and member-vs-admin access are tested.
+- [ ] **B06 · Esimese admini loomine** (S) — pärast B03
+  Käivitumisel, kui ühtegi adminit pole, loo üks seadetest `revkassa.bootstrap.admin-email`,
+  `-password`, `-name` (keskkonnamuutujad) ja logi selle genereeritud PIN üks kord.
+  SQL skriptides paroole pole.
+  Valmis, kui: test näitab, et see jookseb üks kord ja jäetakse vahele, kui admin on olemas.
 
-- [ ] **B08 · Stock ledger and deliveries** (M) — after B07
-  `StockMovement` entity; `StockService.move(product, type, delta, …)` writes the movement and
-  updates `product.stock_qty` in one transaction — the only way stock changes.
-  `POST /api/admin/stock/deliveries` (lines: product, quantity > 0, optional unit cost).
-  Done when: invariant test `stock_qty = sum(quantity_delta)` passes after deliveries.
+## Verstapost 2 — Tooted ja ladu
 
-- [ ] **B09 · Stocktake and write-offs** (S) — after B08
-  `POST /api/admin/stock/stocktake` (counted quantity per product → `STOCKTAKE` movement for
-  the difference, none when equal). `POST /api/admin/stock/write-offs` (quantity + note).
-  Done when: differences and the no-op case are tested.
+- [ ] **B07 · Tooted** (M) — pärast B04
+  `Product` entiteet. `GET /api/products` (ainult aktiivsed, `sort_order` järgi, hinna ja laoseisuga).
+  Admin: `GET/POST/PUT /api/admin/products` (nimi, stiil, maht, hind, madala laoseisu piir,
+  järjekord, aktiivne). Hind > 0; uuendamisel optimistlik lukk (vananenud versioon → 409).
+  Valmis, kui: CRUD, valideerimine ning liikme vs admini ligipääs on testitud.
 
-## Milestone 3 — Buying
+- [ ] **B08 · Laopearaamat ja tarned** (M) — pärast B07
+  `StockMovement` entiteet; `StockService.move(product, type, delta, …)` kirjutab liikumise ja
+  uuendab `product.stock_qty` ühes transaktsioonis — ainus viis laoseisu muuta.
+  `POST /api/admin/stock/deliveries` (read: toode, kogus > 0, valikuline ühiku hind).
+  Valmis, kui: invariandi test `stock_qty = sum(quantity_delta)` läbib pärast tarneid.
 
-- [ ] **B10 · Money ledger** (S) — after B03
-  `AccountEntry` entity; `AccountService.post(member, type, amount, …)` writes the entry and
-  updates `member.balance_cents` in one transaction — the only way a balance changes.
-  Done when: invariant test `balance_cents = sum(amount_cents)` passes.
+- [ ] **B09 · Inventuur ja mahakandmised** (S) — pärast B08
+  `POST /api/admin/stock/stocktake` (loetud kogus toote kohta → `STOCKTAKE` liikumine vahe
+  kohta, võrdsuse korral mitte midagi). `POST /api/admin/stock/write-offs` (kogus + märkus).
+  Valmis, kui: vahed ja tühi juhtum on testitud.
 
-- [ ] **B11 · Purchases** (M) — after B08, B10
-  `POST /api/purchases` `{lines:[{productId, quantity}]}`: one transaction writes `purchase`,
-  `purchase_line` (price copied), one `PURCHASE` entry of −total, one `SALE` movement per line.
-  Inactive product → 409. No balance limit; stock may go negative.
-  Done when: tests check every written row, both invariants, and concurrent purchases
-  of the same product/member don't lose updates.
+## Verstapost 3 — Ostmine
 
-- [ ] **B12 · Undo / reverse** (S) — after B11
-  `POST /api/purchases/{id}/undo`: member on their own purchase within 10 minutes, admin
-  anytime. Marks `REVERSED`, writes `PURCHASE_REVERSAL` and `SALE_REVERSAL` rows. Twice → 409.
-  Done when: the 10-minute boundary (fixed `Clock`), ownership and double-undo are tested.
+- [ ] **B10 · Rahapearaamat** (S) — pärast B03
+  `AccountEntry` entiteet; `AccountService.post(member, type, amount, …)` kirjutab rea ja
+  uuendab `member.balance_cents` ühes transaktsioonis — ainus viis saldot muuta.
+  Valmis, kui: invariandi test `balance_cents = sum(amount_cents)` läbib.
 
-- [ ] **B13 · Favourites** (S) — after B07
-  `MemberFavourite` entity. `GET /api/me/favourites` → ordered product ids;
-  `PUT /api/me/favourites` `{productIds}` replaces the list (positions 0..n−1, no duplicates,
-  unknown id → 400).
-  Done when: replace, reorder and empty list are tested.
+- [ ] **B11 · Ostud** (M) — pärast B08, B10
+  `POST /api/purchases` `{lines:[{productId, quantity}]}`: üks transaktsioon kirjutab
+  `purchase`, `purchase_line` (hind kopeeritud), ühe `PURCHASE` rea summaga −total ja ühe
+  `SALE` liikumise rea kohta. Mitteaktiivne toode → `ForbiddenException`. Saldo limiiti pole;
+  laoseis võib minna negatiivseks.
+  Valmis, kui: testid kontrollivad iga kirjutatud rida, mõlemat invarianti ning et sama
+  toote/liikme samaaegsed ostud ei kaota uuendusi.
 
-## Milestone 4 — Account & payments
+- [ ] **B12 · Tagasivõtmine** (S) — pärast B11
+  `POST /api/purchases/{id}/undo`: liige oma ostu 10 minuti jooksul, admin igal ajal.
+  Märgib `REVERSED`, kirjutab `PURCHASE_REVERSAL` ja `SALE_REVERSAL` read. Teist korda →
+  `ForbiddenException`.
+  Valmis, kui: 10 minuti piir (fikseeritud `Clock`), omanikukontroll ja topelt-tagasivõtmine on testitud.
 
-- [ ] **B14 · Balance history** (S) — after B11
-  `GET /api/me/entries?page=` newest first, with a readable description (e.g. "2 × Saku
-  Originaal", "Payment · bank transfer").
-  Done when: paging and descriptions are tested.
+- [ ] **B13 · Lemmikud** (S) — pärast B07
+  `MemberFavourite` entiteet. `GET /api/me/favourites` → järjestatud toote id-d;
+  `PUT /api/me/favourites` `{productIds}` asendab nimekirja (positsioonid 0..n−1, ilma
+  korduseta, tundmatu id → 400).
+  Valmis, kui: asendamine, ümberjärjestamine ja tühi nimekiri on testitud.
 
-- [ ] **B15 · Report a payment** (S) — after B10
-  `POST /api/payments` (amount > 0, `CARD`/`BANK_TRANSFER`, optional reference) → `PENDING`,
-  no balance change. `GET /api/me/payments?status=PENDING` for the "waiting" list.
-  Done when: the balance is untouched until confirmation.
+## Verstapost 4 — Konto ja maksed
 
-- [ ] **B16 · Confirm / reject payments** (S) — after B15
-  `GET /api/admin/payments?status=PENDING`; `POST /api/admin/payments/{id}/confirm` writes one
-  `PAYMENT` entry; `/reject` with optional note. Deciding twice → 409.
-  Done when: tests prove exactly one entry per confirmed payment.
+- [ ] **B14 · Saldo ajalugu** (S) — pärast B11
+  `GET /api/me/entries?page=` uuemad ees, loetava kirjeldusega (nt "2 × Saku
+  Originaal", "Makse · pangaülekanne").
+  Valmis, kui: lehekülgede kaupa laadimine ja kirjeldused on testitud.
 
-- [ ] **B17 · Member admin** (M) — after B04, B10
-  `GET/POST/PUT /api/admin/members` (name, email, role, active, fee-exempt; email + password
-  required for admins, email optional for members).
-  Create and `POST /api/admin/members/{id}/pin` return a new PIN **once** in the response.
-  `POST /api/admin/members/{id}/adjustments` (non-zero amount, required note).
-  Done when: admin rules, PIN reset invalidating the old PIN, and adjustments are tested.
+- [ ] **B15 · Maksest teatamine** (S) — pärast B10
+  `POST /api/payments` (summa > 0, `CARD`/`BANK_TRANSFER`, valikuline viide) → `PENDING`,
+  saldo ei muutu. `GET /api/me/payments?status=PENDING` "ootel" nimekirja jaoks.
+  Valmis, kui: saldo jääb puutumata kuni kinnitamiseni.
 
-## Milestone 5 — Admin overview
+- [ ] **B16 · Maksete kinnitamine / tagasilükkamine** (S) — pärast B15
+  `GET /api/admin/payments?status=PENDING`; `POST /api/admin/payments/{id}/confirm` kirjutab
+  ühe `PAYMENT` rea; `/reject` valikulise märkusega. Teist korda otsustamine → `ForbiddenException`.
+  Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta.
 
-- [ ] **B18 · Dashboard** (S) — after B09, B16
-  `GET /api/admin/dashboard`: open tabs total and count, pending payments count and sum,
-  low-stock and negative-stock products, largest open tabs (top 5).
-  Done when: figures match seeded test data.
+- [ ] **B17 · Liikmete haldus** (M) — pärast B04, B10
+  `GET/POST/PUT /api/admin/members` (nimi, e-post, roll, aktiivne, tasust vabastus; adminil
+  e-post + parool kohustuslik, liikmel e-post valikuline).
+  Loomine ja `POST /api/admin/members/{id}/pin` tagastavad uue PIN-i vastuses **üks kord**.
+  `POST /api/admin/members/{id}/adjustments` (nullist erinev summa, kohustuslik märkus).
+  Valmis, kui: admini reeglid, PIN-i lähtestamine (vana PIN kehtetu) ja parandused on testitud.
 
-- [ ] **B19 · Sales report** (S) — after B11
-  `GET /api/admin/reports/sales?from=&to=`: units and revenue per product per month,
-  reversed purchases excluded.
+## Verstapost 5 — Admini ülevaade
 
-## Milestone 6 — Fees & invoices
+- [ ] **B18 · Ülevaade** (S) — pärast B09, B16
+  `GET /api/admin/dashboard`: avatud võlgade summa ja arv, ootel maksete arv ja summa,
+  madala ja negatiivse laoseisuga tooted, suurimad võlad (top 5).
+  Valmis, kui: näitajad klapivad testandmetega.
 
-- [ ] **B22 · Membership fee per level** (S) — after B04, B27
-  `MembershipFee` entity (level, month, amount). `GET /api/admin/fees` → current fee per level
-  + history. `POST /api/admin/fees` `{validFrom: "YYYY-MM", fees:[{levelId, amountCents ≥ 0}]}`:
-  the month must be a future one, or the current month if it hasn't been charged yet; a level
-  with a row for that month already → 409. `feeFor(level, month)` = latest `valid_from` ≤ month,
-  else 0.
-  Done when: history lookup per level, a level without fees, the month rules and €0 are tested.
+- [ ] **B19 · Müügiaruanne** (S) — pärast B11
+  `GET /api/admin/reports/sales?from=&to=`: kogused ja tulu toote ja kuu kaupa,
+  tagasivõetud ostud välja arvatud.
 
-- [ ] **B23 · Monthly charge job** (M) — after B10, B17, B22 (level fees)
-  `MembershipChargeService.chargeMonth(month)`: for every active, non-exempt member created
-  before the month and not yet charged, takes `feeFor(member.level, month)` (0 → skip),
-  writes a `membership_charge` (with level) + one `MEMBERSHIP_FEE`
-  entry via `AccountService.post` (`created_by` null), one transaction per member.
-  `@Scheduled` daily at 06:00 (Europe/Tallinn) and once on startup for the current month.
-  Unique `(member_id, month)` guards against a parallel run. History description:
-  "Membership fee · October 2026".
-  Done when: fixed-`Clock` tests cover the 1st, catching up later in the month, running twice
-  (no double charge), different levels charged different amounts, exempt/inactive/new members
-  skipped, fee 0 writes nothing, invariants hold.
+## Verstapost 6 — Tasud ja arved
 
-- [ ] **B24 · Charges list and waive** (S) — after B23
-  `GET /api/admin/fees/charges?month=YYYY-MM` (member, amount, status, totals).
-  `POST /api/admin/fees/charges/{id}/waive` `{note}` (required) → `WAIVED` +
-  `MEMBERSHIP_FEE_WAIVER` entry of +amount. Twice → 409.
-  Done when: waive, double waive and the invariant are tested.
+- [ ] **B22 · Liikmemaks taseme kaupa** (S) — pärast B04, B27
+  `MembershipFee` entiteet (tase, kuu, summa). `GET /api/admin/fees` → praegune tasu taseme
+  kaupa + ajalugu. `POST /api/admin/fees` `{validFrom: "YYYY-MM", fees:[{levelId, amountCents ≥ 0}]}`:
+  kuu peab olema tulevikus või jooksev kuu, kui selle eest pole veel tasu võetud; tasemel on
+  selle kuu rida juba olemas → `ForbiddenException`. `feeFor(level, month)` = hiliseim
+  `valid_from` ≤ kuu, muidu 0.
+  Valmis, kui: ajaloo otsing taseme kaupa, tasudeta tase, kuu reeglid ja 0 € on testitud.
 
-- [ ] **B25 · Email sending** (S) — after B02
-  Add `spring-boot-starter-mail`. `Mailer` interface: SMTP implementation when
-  `spring.mail.host` is set, otherwise a logging one (dev). `@ConfigurationProperties`
-  `revkassa.invoice.*` (org-name, iban, from, reply-to, due-days = 14), validated on startup
-  when SMTP is on.
-  Done when: tests show the logging mailer is used without a host and the properties bind.
+- [ ] **B23 · Kuine tasutöö** (M) — pärast B10, B17, B22 (tasemete tasud)
+  `MembershipChargeService.chargeMonth(month)`: iga aktiivse, tasust vabastamata liikme kohta,
+  kes on loodud enne kuud ja kellelt pole veel tasu võetud, võtab `feeFor(member.level, month)`
+  (0 → jätab vahele), kirjutab `membership_charge` (tasemega) + ühe `MEMBERSHIP_FEE` rea
+  `AccountService.post` kaudu (`created_by` null), üks transaktsioon liikme kohta.
+  `@Scheduled` iga päev kell 06:00 (Europe/Tallinn) ja üks kord käivitumisel jooksva kuu jaoks.
+  Unikaalne `(member_id, month)` kaitseb paralleelse jooksu eest. Ajaloo kirjeldus:
+  "Liikmemaks · oktoober 2026".
+  Valmis, kui: fikseeritud `Clock`-iga testid katavad 1. kuupäeva, hilisema järeletegemise,
+  kaks jooksu (topelttasu pole), eri tasemetelt eri summad, vabastatud/mitteaktiivsed/uued
+  liikmed vahele jäetud, tasu 0 ei kirjuta midagi, invariandid kehtivad.
 
-- [ ] **B26 · Invoices** (M) — after B14, B17, B25
-  `Invoice` entity. `GET /api/admin/invoices/candidates`: members with balance < 0, email,
-  last invoice date, `selectable` (has email). `GET /api/admin/invoices/preview?memberId=`.
-  `POST /api/admin/invoices` `{memberIds}`: per member, own transaction: next number
-  `YYYY-NNNN`, amount = −balance, due date, plain-text **Estonian** body (owed, entries since
-  the previous invoice or last 60 days, IBAN, description "Arve <number>"; `et-EE` money and
-  dates, Estonian month names), send, store `SENT` or `FAILED` + error;
-  returns a result per member. Balance ≥ 0 or no email → skipped with a reason.
-  `GET /api/admin/invoices?memberId=`, `POST /api/admin/invoices/{id}/resend` (`FAILED` only,
-  same number). Balances never change.
-  Done when: tests with a fake `Mailer` cover numbering across a year change, a failing
-  address not stopping the rest, skip reasons, resend, and the email body.
+- [ ] **B24 · Tasude nimekiri ja tühistamine** (S) — pärast B23
+  `GET /api/admin/fees/charges?month=YYYY-MM` (liige, summa, staatus, kokkuvõtted).
+  `POST /api/admin/fees/charges/{id}/waive` `{note}` (kohustuslik) → `WAIVED` +
+  `MEMBERSHIP_FEE_WAIVER` rida summaga +summa. Teist korda → `ForbiddenException`.
+  Valmis, kui: tühistamine, topelt-tühistamine ja invariant on testitud.
 
-## Milestone 7 — Events
+- [ ] **B25 · E-kirjade saatmine** (S) — pärast B02
+  Lisa `spring-boot-starter-mail`. `Mailer` liides (`infrastructure/mail/`): SMTP
+  implementatsioon, kui `spring.mail.host` on seatud, muidu logiv (arendus).
+  `@ConfigurationProperties` `revkassa.invoice.*` (org-name, iban, from, reply-to,
+  due-days = 14), valideeritakse käivitumisel, kui SMTP on sees.
+  Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
 
-- [ ] **B27 · Membership levels** (S) — after B17
-  `MembershipLevel` entity. `GET/POST/PUT /api/admin/levels` (name unique ignoring case,
-  sort order, active). Retiring keeps members on it; delete only when unused (409 otherwise).
-  `member.level_id` in member admin; new members get the first active level.
-  Done when: unique name, retire vs delete, and default level are tested.
+- [ ] **B26 · Arved** (M) — pärast B14, B17, B25
+  `Invoice` entiteet. `GET /api/admin/invoices/candidates`: liikmed saldoga < 0, e-post,
+  viimase arve kuupäev, `selectable` (e-post olemas). `GET /api/admin/invoices/preview?memberId=`.
+  `POST /api/admin/invoices` `{memberIds}`: liikme kohta oma transaktsioon: järgmine number
+  `YYYY-NNNN`, summa = −saldo, maksetähtaeg, lihttekstiga **eestikeelne** sisu (võlg, read
+  eelmisest arvest või viimased 60 päeva, IBAN, selgitus "Arve <number>"; `et-EE` raha ja
+  kuupäevad, eestikeelsed kuunimed), saada, salvesta `SENT` või `FAILED` + viga;
+  tagastab tulemuse liikme kaupa. Saldo ≥ 0 või e-posti puudumine → vahele jäetud koos põhjusega.
+  `GET /api/admin/invoices?memberId=`, `POST /api/admin/invoices/{id}/resend` (ainult
+  `FAILED`, sama number). Saldod ei muutu kunagi.
+  Valmis, kui: võlts-`Mailer`-iga testid katavad numeratsiooni üle aastavahetuse, ebaõnnestunud
+  aadressi, mis teisi ei peata, vahelejätmise põhjused, uuesti saatmise ja kirja sisu.
 
-- [ ] **B28 · Events** (M) — after B27
-  `Event` + `EventLevelFee` entities. `GET/POST /api/admin/events`, `GET/PUT
-  /api/admin/events/{id}` (detail with fees per level, participant count, budget totals),
-  `PUT /api/admin/events/{id}/fees`. `CLOSED`/`CANCELLED` events are read-only (409).
-  Done when: CRUD, fee table, status rules and optimistic locking are tested.
+## Verstapost 7 — Üritused
 
-- [ ] **B29 · Participants and event fees** (M) — after B10, B28
-  `POST /api/admin/events/{id}/participants {memberIds}`: per member copy level + fee, write
-  `EVENT_FEE` entry via `AccountService.post` (none when 0); already active → skipped.
-  `DELETE …/participants/{memberId}` → `REMOVED` + `EVENT_FEE_REVERSAL`. `POST …/cancel`
-  reverses all; `POST …/close` locks. History description "Ürituse tasu · <event>".
-  Done when: add/remove/re-add, fee 0, cancel, the participant invariant and the balance
-  invariant are tested.
+- [ ] **B27 · Liikmetasemed** (S) — pärast B17
+  `MembershipLevel` entiteet. `GET/POST/PUT /api/admin/levels` (nimi unikaalne tõstutundetult,
+  järjekord, aktiivne). Kasutusest mahavõtmine jätab liikmed alles; kustutamine ainult kasutamata
+  tasemel (muidu `ForbiddenException`). `member.level_id` liikmete halduses; uus liige saab
+  esimese aktiivse taseme.
+  Valmis, kui: unikaalne nimi, mahavõtmine vs kustutamine ja vaiketase on testitud.
 
-- [ ] **B30 · Event budget** (S) — after B28
-  `EventBudgetLine` entity, CRUD under `/api/admin/events/{id}/budget-lines`; totals per
-  category (planned, actual), fee income and result in the event detail.
-  Done when: totals with missing actuals and the read-only states are tested.
+- [ ] **B28 · Üritused** (M) — pärast B27
+  `Event` + `EventLevelFee` entiteedid. `GET/POST /api/admin/events`, `GET/PUT
+  /api/admin/events/{id}` (detail tasudega taseme kaupa, osalejate arv, eelarve kokkuvõtted),
+  `PUT /api/admin/events/{id}/fees`. `CLOSED`/`CANCELLED` üritused on ainult loetavad
+  (`ForbiddenException`).
+  Valmis, kui: CRUD, tasutabel, staatusereeglid ja optimistlik lukk on testitud.
 
-- [ ] **B33 · Member sign-up** (S) — after B29
-  `event.signup_open` (admin edit). `GET /api/events`: `PLANNED` events with sign-up open,
-  plus events the member is in; each with own fee (by level), participant count, `signedUp`.
-  `POST /api/events/{id}/signup`: only `PLANNED` + open (else 409), not already active (409);
-  same service as the admin add, `added_by` = the member. No member endpoint to cancel.
-  Done when: open/closed/cancelled, double sign-up, fee by level and that a member can't
-  remove themselves (no route; admin DELETE still works) are tested.
+- [ ] **B29 · Osalejad ja ürituse tasud** (M) — pärast B10, B28
+  `POST /api/admin/events/{id}/participants {memberIds}`: liikme kohta kopeeri tase + tasu,
+  kirjuta `EVENT_FEE` rida `AccountService.post` kaudu (0 korral mitte); juba aktiivne → vahele
+  jäetud. `DELETE …/participants/{memberId}` → `REMOVED` + `EVENT_FEE_REVERSAL`. `POST …/cancel`
+  tagastab kõik; `POST …/close` lukustab. Ajaloo kirjeldus "Ürituse tasu · <üritus>".
+  Valmis, kui: lisamine/eemaldamine/uuesti lisamine, tasu 0, tühistamine, osaleja invariant ja
+  saldo invariant on testitud.
 
-## Milestone 8 — AI assistant (optional)
+- [ ] **B30 · Ürituse eelarve** (S) — pärast B28
+  `EventBudgetLine` entiteet, CRUD `/api/admin/events/{id}/budget-lines` all; kokkuvõtted
+  kategooria kaupa (planeeritud, tegelik), tasudest laekuv ja tulemus ürituse detailis.
+  Valmis, kui: puuduvate tegelike summadega kokkuvõtted ja ainult loetavad olekud on testitud.
 
-- [ ] **B31 · Assistant client** (M) — after B30
-  Add `com.anthropic:anthropic-java`. `EventAssistant` interface; `AnthropicEventAssistant`
-  when `ANTHROPIC_API_KEY` is set (model `revkassa.ai.model`, default `claude-sonnet-5-5`,
-  max tokens and timeout from config), else `DisabledEventAssistant`.
-  `GET /api/admin/assistant/status`.
-  Done when: the right bean is chosen with/without a key; no key → status `{enabled: false}`.
+- [ ] **B33 · Liikme registreerumine** (S) — pärast B29
+  `event.signup_open` (admin muudab). `GET /api/events`: `PLANNED` üritused avatud
+  registreerimisega ja üritused, kus liige osaleb; igaühel oma tasu (taseme järgi), osalejate
+  arv, `signedUp`. `POST /api/events/{id}/signup`: ainult `PLANNED` + avatud (muidu
+  `ForbiddenException`), mitte juba aktiivne (`ForbiddenException`); sama service nagu admini
+  lisamisel, `added_by` = liige. Liikmel tühistamise endpointi pole.
+  Valmis, kui: avatud/suletud/tühistatud, topeltregistreerumine, tasu taseme järgi ja see, et
+  liige ei saa end eemaldada (route'i pole; admini DELETE töötab), on testitud.
 
-- [ ] **B32 · Event assistant endpoint** (M) — after B31
-  `POST /api/admin/events/{id}/assistant {kind, question}`. Prompt in Estonian built only
-  from event name, date, participants per level, budget lines and the question — **no
-  member names, emails or balances**. Asks for JSON `{answer, suggestedLines:[{category,
-  description, plannedCents}]}`; invalid JSON → answer text only. 20 requests per admin per
-  day (in memory), log who/when/tokens, never the prompt. Accepting a suggestion uses the
-  normal budget-line POST with `source: AI`.
-  Done when: tests with a fake assistant check the prompt contains no personal data, the
-  JSON parsing fallback, the daily limit, and the disabled state.
+## Verstapost 8 — AI abiline (valikuline)
 
-## Milestone 9 — Release
+- [ ] **B31 · Abilise klient** (M) — pärast B30
+  Lisa `com.anthropic:anthropic-java`. `EventAssistant` liides (`infrastructure/ai/`);
+  `AnthropicEventAssistant`, kui `ANTHROPIC_API_KEY` on seatud (mudel `revkassa.ai.model`,
+  vaikimisi `claude-sonnet-5-5`, max tokenid ja aegumine konfiguratsioonist), muidu
+  `DisabledEventAssistant`. `GET /api/admin/assistant/status`.
+  Valmis, kui: võtmega/võtmeta valitakse õige bean; võtmeta → staatus `{enabled: false}`.
 
-- [ ] **B20 · Single jar** (S) — after the frontend exists
-  Gradle task builds `frontend/` and copies `dist/` into the jar's static resources; unknown
-  non-`/api` paths fall back to `index.html`.
-  Done when: `./gradlew bootJar` + `java -jar` serves the UI and the API.
+- [ ] **B32 · Ürituse abilise endpoint** (M) — pärast B31
+  `POST /api/admin/events/{id}/assistant {kind, question}`. Eestikeelne prompt ehitatakse
+  ainult ürituse nimest, kuupäevast, osalejatest taseme kaupa, eelarveridadest ja küsimusest —
+  **ilma liikmete nimede, e-posti ja saldodeta**. Küsib JSON-i `{answer, suggestedLines:[{category,
+  description, plannedCents}]}`; vigane JSON → ainult vastuse tekst. 20 päringut admini kohta
+  päevas (mälus), logi kes/millal/tokenid, mitte kunagi prompti. Ettepaneku vastuvõtmine
+  kasutab tavalist eelarverea POST-i `source: AI`-ga.
+  Valmis, kui: võlts-abilisega testid kontrollivad, et prompt ei sisalda isikuandmeid, JSON-i
+  varulahendust, päevalimiiti ja väljalülitatud olekut.
 
-- [ ] **B21 · Run and back up** (S)
-  Production profile (secrets from env incl. SMTP password and `ANTHROPIC_API_KEY`, secure cookies), systemd unit, nightly `pg_dump`
-  with a restore check. Document in `docs/`.
+## Verstapost 9 — Väljalase
+
+- [ ] **B20 · Üks jar** (S) — kui frontend on olemas
+  Gradle task ehitab `frontend/` ja kopeerib `dist/` jar-i staatilistesse ressurssidesse;
+  tundmatud mitte-`/api` teed suunatakse `index.html`-ile.
+  Valmis, kui: `./gradlew bootJar` + `java -jar` serveerib UI-d ja API-t.
+
+- [ ] **B21 · Käivitamine ja varukoopiad** (S)
+  Tootmise profiil (saladused keskkonnast, k.a SMTP parool ja `ANTHROPIC_API_KEY`, turvalised
+  küpsised), systemd unit, öine `pg_dump` taastamise kontrolliga. Tootmise andmebaas luuakse
+  `2_create.sql`-iga (ilma `3_import.sql`-ita), hilisemad muudatused `docs/database/muudatused/`
+  skriptidega. Dokumenteeri kausta `docs/`.

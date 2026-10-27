@@ -1,71 +1,56 @@
 ---
 name: add-feature
-description: Build a RevKassa feature end to end — JPA entity, repository, service, REST controller, tests and the Vue screen. Use when implementing anything from docs/PLAN.md (products, stock, purchases, payments, members, fees, invoices, levels, events, budget, assistant, admin screens).
+description: Ehita RevKassa funktsionaalsus otsast lõpuni — entiteet, repository, mapper, service, REST kontroller, testid ja Vue vaade — kursuse projekti stiilis. Kasuta, kui implementeerid midagi failidest docs/BACKEND-TASKS.md / FRONTEND-TASKS.md (tooted, ladu, ostud, maksed, liikmed, tasud, arved, tasemed, üritused, eelarve, abiline, admini vaated) ja kasutaja tahab, et Claude selle ise ära teeks (mitte õpilasena juhendatult — selleks on skill-rain-ai-backend / skill-rain-ai-frontend).
 ---
 
-# Building a feature slice
+# Funktsionaalsuse ehitamine
 
-Read `docs/PLAN.md` (rules, API sketch, milestones) and `docs/DB-MODEL.md` first. Check the
-"RevKassa Mockups" canvas for the screen's intended layout when building UI.
+Loe enne alustamist:
+- `docs/PLAN.md` (reeglid, API visand) ja `docs/DB-MODEL.md`
+- `backend/CLAUDE.md` ja `docs/backend/projekti-struktuur.md` — backendi konventsioonid ja failide paigutus
+- `docs/frontend/projekti-struktuur.md` ja `docs/frontend/vue-komponendi-struktuur.md` — frontendi konventsioonid
+- taskifail `docs/tasks/backend|frontend/...` ja selle implementatsiooniplaan (`-IMPLEMENTATSIOON.md`), kui need on olemas
+- "RevKassa Mockups" lõuend, kui ehitad UI-d
 
-## Backend layout (package by feature)
-`src/main/java/com/example/RevKassa/<feature>/`
-- `<Thing>.java` — JPA entity. Lombok `@Getter`/`@Setter` + protected no-arg constructor;
-  no `@Data` on entities. `@Version` where the table has `version`. Enums `EnumType.STRING`.
-- `<Thing>Repository.java` — Spring Data interface.
-- `<Thing>Service.java` — business rules, `@Transactional` on writes. Controllers never
-  touch repositories directly.
-- `<Thing>Controller.java` — `@RestController`, paths from the API sketch (`/api/...`,
-  admin under `/api/admin/...`). Request/response DTOs are Java `record`s with Bean
-  Validation (`@NotNull`, `@Positive`, ...) and `@Valid`. Never return entities.
-- Errors: throw domain exceptions; a `@RestControllerAdvice` in `common` maps them to
-  `ProblemDetail` (400 validation, 404 not found, 409 business-rule conflict such as
-  "undo window has passed").
+## Backend (`backend/src/main/java/ee/revkassa/`)
 
-## Non-negotiable domain rules
-- Money is `long` cents end to end; format as euros only in the UI.
-- Balance changes: write an `AccountEntry` **and** update `member.balanceCents` in the same
-  transaction. Stock changes: write a `StockMovement` **and** update `product.stockQty`.
-  Put each pair behind one service method (`AccountService.post(...)`,
-  `StockService.move(...)`) and never bypass it.
-- Ledger rows are never updated or deleted; corrections are new rows.
-- Copy `unit_price_cents` onto purchase lines. One price list; guests buy on
-  the hosting member's account (no guest accounts), and there is no tab limit.
-- Membership fees are charged to the balance through `AccountService.post` like any other
-  entry; one `membership_charge` per member per month (unique), waivers are new entries.
-- Event fees go on the balance via `AccountService.post` (`EVENT_FEE`, reversed with
-  `EVENT_FEE_REVERSAL`); budget lines never touch balances or stock.
-- The AI assistant is optional and admin-only: go through `EventAssistant`, send only event
-  data (never member names, emails or balances), never write anything without the admin
-  accepting it. Tests use a fake assistant; never call the real API in tests.
-- UI text, emails and API error `detail` messages are Estonian; code, enums, DB and API
-  field names English.
-- Invoice emails never change a balance. Send through the `Mailer` interface only (logs
-  instead of sending when `spring.mail.host` is unset); tests use a fake `Mailer`.
-- Auth: members log in with a unique 6-digit PIN only (stored as `pin_hmac`, never plain or
-  logged); PIN login is rate-limited; PIN sessions expire after 1 minute idle on every device. `/api/admin/**` requires the separate email + password
-  admin login — a PIN session never reaches admin endpoints.
+Ehita kihtide järjekorras: persistence (entiteet → repository → mapper) → service → controller → testid.
+Kontrolli enne iga kihi juures, mis on juba olemas — sageli puudub ainult controller või üks service meetod.
 
-## Tests
-- Service logic: `@SpringBootTest` against the real Postgres (see `run-revkassa`), each test
-  `@Transactional` so it rolls back. Assert the ledger invariants from DB-MODEL.md.
-- Controller: `@WebMvcTest` with `MockMvc` for validation and status codes.
+- **Entiteet** `persistence/<entiteet>/<Entiteet>.java` — Lomboki `@Getter`/`@Setter`, ilma `@Data`-ta. `@Version`, kui tabelis on `version`. Enumid `EnumType.STRING`.
+- **Repository** samas paketis, lühikesed meetodinimed + `@Query` named parameters stiilis.
+- **Mapper** samas paketis, MapStruct `@Mapper(componentModel = "spring")`, iga target-väli eksplitsiitselt (`source` või `ignore = true`).
+- **Service** `service/<Ressurss>Service.java` — äriloogika, `@Transactional` kirjutavatel meetoditel, `getValid<Entiteet>By(id)` muster.
+- **Controller** `controller/<ressurss>/` või `controller/admin/<ressurss>/`, DTO-d `dto/` alampaketis (jagatud DTO-d `controller/common/dto/`). `@Operation` + `@ApiResponses` igal meetodil. Kontroller ei tagasta kunagi entiteeti.
+- **Vead** `infrastructure/` erinditega, sõnum ja kood `Error` enum'is, vastus `ApiError { message, errorCode }`.
 
-## Frontend (`frontend/src`)
-- `views/member/<Screen>View.vue` and `views/admin/<Screen>View.vue`, routed in `router.js`
-  (admin routes under `/admin`); shared bits in `components/`.
-- API calls through one `api.js` wrapper (`fetch`, JSON, CSRF header, throws on non-2xx
-  with the ProblemDetail `detail` message). No direct `fetch` in components.
-- Member views (`views/member/`) are **mobile-first**: write base CSS for a ~390px phone,
-  add `@media (min-width: 1024px)` rules for the 11" landscape bar tablet (~1280×800 CSS px:
-  drink grid + always-visible order panel); never the other way round. Single
-  column, bottom tab bar, sticky bottom action bar, buttons ≥ 44px, `inputmode` on numeric
-  inputs, no hover-only affordances. Check at 390px wide first, then 1280×800.
-- Admin views (`views/admin/`) are desktop-first but must not break at phone width (tables
-  scroll in an `overflow-x: auto` box, toolbars wrap).
-- Money via one `formatEuro(cents)` helper (`et-EE` locale, `€`).
+### Domeenireeglid, mida ei tohi rikkuda
+- Raha on `long` sentides otsast lõpuni; eurodeks vormindatakse ainult UI-s.
+- Saldo muutub ainult `AccountService.post(...)` kaudu (rida **ja** `member.balanceCents` samas transaktsioonis). Laoseis ainult `StockService.move(...)` kaudu.
+- Pearaamatu ridu ei muudeta ega kustutata; parandused on uued read.
+- Hind kopeeritakse ostureale. Üks hinnakiri; külalised ostavad võõrustava liikme arvele; võlalimiiti pole.
+- Liikmemaks ja ürituse tasud lähevad saldole `AccountService.post` kaudu; üks `membership_charge` liikme ja kuu kohta; tühistused on uued read. Eelarveread ei puuduta saldosid ega ladu.
+- AI abiline: ainult admin, `EventAssistant` kaudu, ainult ürituse andmed (mitte nimed, e-post, saldod), midagi ei kirjutata ilma admini nõusolekuta. Testides võlts-abiline.
+- E-kirjad ainult `Mailer` liidese kaudu, saldot ei muuda; testides võlts-`Mailer`.
+- Sisselogimine: liige ainult unikaalse 6-kohalise PIN-iga (`pin_hmac`, mitte kunagi lihtsalt ega logis), katsete piirang, 1 min tegevusetus. `/api/admin/**` vajab eraldi e-posti + parooli sisselogimist.
+- UI tekst, e-kirjad ja `ApiError.message` on eesti keeles; kood, enumid, tabelid ja API väljad inglise keeles.
 
-## Done means
-`./gradlew test` and `npm run build` pass, `docs/` updated if the API or model changed, and
-the feature was exercised for real (see `run-revkassa`) — report what you ran.
-Schema changes: follow `add-migration`.
+### Testid
+- Service loogika: `@SpringBootTest` päris Postgresi vastu (vt `run-revkassa`), iga test `@Transactional`. Kontrolli DB-MODEL.md invariante.
+- Controller: `@WebMvcTest` + `MockMvc` valideerimise, staatuskoodide ja `ApiError` jaoks.
+
+## Frontend (`frontend/src/`)
+
+Ehita järjekorras: route + vaate fail → staatiline template mockupi järgi → `data` → service funktsioon `api-services/` all → sidumine (`beforeMount` või sündmus) → veaolukorrad → komponentideks eraldamine.
+
+- Options API projekti järjekorras; axios ainult `api-services/` kaudu; `.then()/.catch()/.finally()`.
+- Vaated `views/`, admini omad eesliitega `Admin`; korduvad osad `components/common|forms|modals|tables/`.
+- Jagatud olek props/emits ja `sessionStorage` (`utils/session.js`, `utils/basket.js`) kaudu.
+- Liikme vaated mobile-first (390px, siis `@media (min-width: 1024px)` tahvlile), admini omad desktop-first, aga telefonis kasutatavad.
+- Raha ainult `formatEuro(cents)` abil.
+
+## Valmis tähendab
+`./gradlew test` (kaustas `backend/`) ja `npm run build` läbivad, `docs/` on uuendatud, kui API
+või mudel muutus, ja funktsionaalsus on päriselt läbi proovitud (vt `run-revkassa`) —
+teata, mida käivitasid. Skeemimuudatused: skill `muuda-andmebaasi-skeemi`.
+Pärast muudatust võib meetodid järjestada skilliga `skill-jarjesta-meetodid`.

@@ -1,13 +1,13 @@
-package com.example.RevKassa;
+package ee.revkassa;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class RevKassaApplication {
+public class RevkassaApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(RevKassaApplication.class, args);
+		SpringApplication.run(RevkassaApplication.class, args);
 	}
 
 }
