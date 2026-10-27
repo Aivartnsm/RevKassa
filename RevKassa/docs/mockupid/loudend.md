@@ -64,20 +64,20 @@ Kõigil sisselogitud ekraanidel (`isApp`) on päis nime ja saldoga ning tabiriba
 |---|---|---|---|---|---|
 | Admini sisselogimine | `needsLogin` | `needsLogin` | `AdminLoginView.vue`, `/admin/login` | F06 | `POST /api/auth/admin` |
 | Ülevaade | `isDashboard` | `isOverview` | `AdminDashboardView.vue`, `/admin` | F17 | `GET /api/admin/dashboard` |
-| Tooted | `isProducts` | `isStock`, detail `isProduct` | `AdminProductsView.vue`, `/admin/products` | F07 | `GET`/`POST`/`PUT /api/admin/products` |
+| Tooted (+ muutmine) | `isProducts` (+ `showEditProduct`) | `isStock` (+ `showNewProduct`), detail `isProduct` ("Muuda toodet") | `AdminProductsView.vue`, `/admin/products` | F07 | `GET`/`POST`/`PUT /api/admin/products` |
 | Tarne | `isDelivery` | `isProduct` (−/+ ja kiirnupud) | `AdminDeliveryView.vue`, `/admin/delivery` | F08 | `POST /api/admin/stock/deliveries` |
 | Inventuur, mahakandmine | `isStocktake` (all "Kanna maha") | `isStock`, detail `isProduct` ("Kanna maha") | `AdminStocktakeView.vue`, `/admin/stocktake` | F09 | `POST /api/admin/stock/stocktake`, `POST /api/admin/stock/write-offs` |
-| Maksed | `isPayments` (+ "Sisesta makse" `showPaymentForm`) | `isPayments` | `AdminPaymentsView.vue`, `/admin/payments` | F15 | `GET /api/admin/payments?status=PENDING`, `POST …/{id}/confirm`, `…/reject`; `POST /api/admin/payments` (admin sisestab kinnitatud makse) |
-| Liikmed ja tasemed | `isMembers` (+ liikme "Ostud" `showPurchases`) | `isMembers`, detail `isMember` | `AdminMembersView.vue`, `/admin/members` | F16, F22 | `GET`/`POST`/`PUT /api/admin/members`, `POST …/{id}/pin`, `POST …/{id}/adjustments`, `GET`/`POST`/`PUT /api/admin/levels`; `GET /api/admin/members/{id}/purchases`, `POST /api/purchases/{id}/undo` |
+| Maksed | `isPayments` (+ "Sisesta makse" `showPaymentForm`) | `isPayments` (+ `showPaymentForm`) | `AdminPaymentsView.vue`, `/admin/payments` | F15 | `GET /api/admin/payments?status=PENDING`, `POST …/{id}/confirm`, `…/reject`; `POST /api/admin/payments` (admin sisestab kinnitatud makse) |
+| Liikmed ja tasemed | `isMembers` (+ `showEditMember`, "Ostud" `showPurchases`) | `isMembers` (+ `showNewMember`, `showLevels`), detail `isMember` ("Muuda andmeid", "Ostud") | `AdminMembersView.vue`, `/admin/members` | F16, F22 | `GET`/`POST`/`PUT /api/admin/members`, `POST …/{id}/pin`, `POST …/{id}/adjustments`, `GET`/`POST`/`PUT /api/admin/levels`; `GET /api/admin/members/{id}/purchases`, `POST /api/purchases/{id}/undo` |
 | Liikmemaksud | `isFees` | `isBilling` | `AdminFeesView.vue`, `/admin/fees` | F20 | `GET`/`POST /api/admin/fees`, `GET /api/admin/fees/charges`, `POST …/charges/{id}/waive` |
 | Arved | `isInvoices` | `isBilling` | `AdminInvoicesView.vue`, `/admin/invoices` | F21 | `GET /api/admin/invoices/candidates`, `GET …/preview`, `POST /api/admin/invoices`, `GET /api/admin/invoices?memberId=`, `POST …/{id}/resend` |
 | Ürituste nimekiri | `isEventList` | `isEvents` | `AdminEventsView.vue`, `/admin/events` | F23 | `GET`/`POST /api/admin/events` |
 | Ürituse detail: osalejad | `isEventDetail` + `isEvPeople` | `isEvent` + `isEvPeople` | `AdminEventView.vue`, `/admin/events/:id` | F23, F24 | `GET`/`PUT /api/admin/events/{id}`, `POST …/participants`, `DELETE …/participants/{memberId}`, `POST …/close`, `…/cancel` |
 | Ürituse detail: tasud | `isEventDetail` + `isEvPeople` (tasude tabel samas) | `isEvent` + `isEvFees` | sama | F24 | `PUT /api/admin/events/{id}/fees` |
 | Ürituse detail: eelarve ja AI | `isEventDetail` + `isEvBudget` | `isEvent` + `isEvBudget` | sama | F25, F26 | `…/budget-lines`, `GET /api/admin/assistant/status`, `POST /api/admin/events/{id}/assistant` |
-| Müügiaruanne | `isReports` | — | `AdminReportsView.vue`, `/admin/reports` | F18 | `GET /api/admin/reports/sales?from=&to=` |
+| Müügiaruanne | `isReports` | detail `isReport` (ülevaatelt "Müügiaruanne ›") | `AdminReportsView.vue`, `/admin/reports` | F18 | `GET /api/admin/reports/sales?from=&to=` |
 
-Müügiaruanne on ainult laua joonisel.
+Admini laua- ja telefonijoonisel on samad funktsioonid; telefonis on osa neist detailvaadetes või paneelides.
 
 ## API kontrakt
 
