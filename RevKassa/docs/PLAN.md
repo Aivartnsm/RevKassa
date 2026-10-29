@@ -195,7 +195,7 @@ AI abiline (valikuline)
   `ForbiddenException`), vastuse keha `ApiError { message, errorCode }`, sõnumid ja koodid
   ühes `Error` enum'is.
 - Andmebaas: PostgreSQL 16 WSL-is (`localhost:5432`, andmebaas/kasutaja/parool `revkassa`).
-  Skeem on failides `docs/database/1_drop.sql`, `2_create.sql`, `3_import.sql`, mida käivitatakse
+  Skeem on failides `docs/database/1_reset_database.sql`, `2_create.sql`, `3_import.sql`, mida käivitatakse
   käsitsi (IntelliJ Database konsool või `psql`); Hibernate ainult valideerib.
   Tootmises tehakse skeemimuudatus käsitsi muudatusskriptiga (`docs/database/muudatused/`).
 - E-post: `spring-boot-starter-mail`; igakuine tasutöö kasutab `@Scheduled` (üks instants,

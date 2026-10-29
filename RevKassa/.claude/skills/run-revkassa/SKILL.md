@@ -23,9 +23,9 @@ systemctl is-active postgresql || sudo systemctl start postgresql
 PGPASSWORD=revkassa psql -h localhost -U revkassa -d revkassa -c 'select 1'
 ```
 Andmebaas, kasutaja ja parool on kõik `revkassa`. Windows ulatub selleni aadressil `localhost:5432`.
-Skeem tuleb failidest `docs/database/1_drop.sql`, `2_create.sql`, `3_import.sql` (vt skill
+Skeem tuleb failidest `docs/database/1_reset_database.sql`, `2_create.sql`, `3_import.sql` (vt skill
 `muuda-andmebaasi-skeemi`). Kui tabelid puuduvad, küsi kasutajalt enne skriptide käivitamist —
-`1_drop.sql` kustutab kõik andmed.
+`1_reset_database.sql` kustutab kõik andmed.
 
 ## 2. Backend
 ```bash

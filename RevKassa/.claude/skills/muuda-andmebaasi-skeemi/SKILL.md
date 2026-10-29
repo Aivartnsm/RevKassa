@@ -6,7 +6,7 @@ description: Lisa või muuda RevKassa andmebaasi tabeleid/veerge/indekseid/piira
 # Andmebaasi skeemi muutmine
 
 Skeemi kavand on failis `docs/DB-MODEL.md`, skeem ise failides `docs/database/`:
-`1_drop.sql` (kustutab skeemi), `2_create.sql` (kogu praegune skeem + 5 liikmetaset),
+`1_reset_database.sql` (kustutab skeemi), `2_create.sql` (kogu praegune skeem + 5 liikmetaset),
 `3_import.sql` (arenduse näidisandmed). Flyway't pole; skripte käivitatakse käsitsi.
 
 ## Iga muudatus puudutab kõiki neid kohti
@@ -14,10 +14,10 @@ Skeemi kavand on failis `docs/DB-MODEL.md`, skeem ise failides `docs/database/`:
 1. **`docs/DB-MODEL.md`** — tabeli kirjeldus, indeksid, piirangud, invariandid.
 2. **`docs/database/2_create.sql`** — muuda nii, et see looks alati kogu **praeguse** skeemi nullist.
 3. **`docs/database/3_import.sql`** — kohanda näidisandmed (nt uus `not null` veerg vajab väärtust).
-4. **`docs/database/1_drop.sql`** — uus tabel lisa kustutamisse (sõltuvuste järjekorras).
+4. **`docs/database/1_reset_database.sql`** — uus tabel lisa kustutamisse (sõltuvuste järjekorras).
 5. **Muudatusskript tootmise jaoks** `docs/database/muudatused/<AAAA-KK-PP>_<lühikirjeldus>.sql` —
    `ALTER`/`CREATE` laused, mis viivad olemasoleva andmebaasi eelmisest skeemist uude **andmeid
-   kaotamata**. Tootmises ei tohi kunagi `1_drop.sql`-i käivitada.
+   kaotamata**. Tootmises ei tohi kunagi `1_reset_database.sql`-i käivitada.
 6. **Entiteet** `persistence/<entiteet>/` — Hibernate valideerib (`ddl-auto=validate`), seega iga
    entiteedi väli vajab sobiva tüübiga veergu, muidu rakendus ei käivitu.
 
@@ -35,7 +35,7 @@ lisa nullable, täida andmed, siis sea `not null` — ühes skriptis.
 ## Kontrolli
 ```bash
 # arenduse andmebaas uuesti nullist (kustutab kõik arenduse andmed — küsi kasutajalt enne luba)
-for f in 1_drop 2_create 3_import; do PGPASSWORD=revkassa psql -h localhost -U revkassa -d revkassa -v ON_ERROR_STOP=1 -f docs/database/$f.sql; done
+for f in 1_reset_database 2_create 3_import; do PGPASSWORD=revkassa psql -h localhost -U revkassa -d revkassa -v ON_ERROR_STOP=1 -f docs/database/$f.sql; done
 PGPASSWORD=revkassa psql -h localhost -U revkassa -d revkassa -c '\d <tabel>'
 cd backend && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew test
 ```

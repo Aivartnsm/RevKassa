@@ -2,7 +2,7 @@
 
 PostgreSQL 16. See dokument on skeemi kavand. Skeem ise on SQL failides kaustas `docs/database/`:
 
-- `1_drop.sql` — kustutab skeemi (ainult arenduses!)
+- `1_reset_database.sql` — kustutab ja loob uuesti `public` skeemi (ainult arenduses!)
 - `2_create.sql` — loob kõik tabelid, piirangud, indeksid ja viis algset liikmetaset
 - `3_import.sql` — arenduse näidisandmed (liikmed, tooted, ...)
 

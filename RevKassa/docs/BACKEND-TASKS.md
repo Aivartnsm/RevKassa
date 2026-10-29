@@ -16,7 +16,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 ## Verstapost 1 — Alus
 
 - [ ] **B01 · Andmebaasi skriptid ja sõltuvused** (M)
-  `docs/database/1_drop.sql`, `2_create.sql` (kõik 16 tabelit, piirangud, FK-d, indeksid täpselt
+  `docs/database/1_reset_database.sql`, `2_create.sql` (kõik 16 tabelit, piirangud, FK-d, indeksid täpselt
   nagu DB-MODEL.md-s, k.a 5 liikmetaset) ja `3_import.sql` (näidisliikmed, -tooted, -tarned).
   `build.gradle`-sse MapStruct (+ `lombok-mapstruct-binding`) ja springdoc-openapi (Swagger UI).
   Valmis, kui: skriptid jooksevad tühjale andmebaasile vigadeta, rakendus käivitub
