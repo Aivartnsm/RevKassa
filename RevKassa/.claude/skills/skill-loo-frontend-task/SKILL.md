@@ -159,7 +159,9 @@ Tabel veergudega: Element | Tüüp | Kirjeldus/käitumine
 
 **Veateated:**
 
-Tabel: Status code | errorCode | message | Frontend käitumine
+Tabel: Status code | errorCode | message | UI tekst (eesti) | Frontend käitumine
+
+<`message` on backendist ingliskeelne ja kasutajale seda ei näidata. "UI tekst" on eestikeelne teade, mille vaade näitab `errorCode` järgi failist `src/utils/errorMessages.js` (võta backend taski tabelist või lõuendilt).>
 
 ## Komponendid ja failistruktuur
 

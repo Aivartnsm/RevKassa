@@ -21,7 +21,9 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 - Raha tuleb täisarvuliste sentidena; vorminda ainult `formatEuro()` abil (`27,40 €`).
 - **Kogu UI tekst on eesti keeles**, kirjutatud otse komponentidesse (`<html lang="et">`, i18n
   teeki pole). Kuupäevad ühe `formatDate()` abil (`16.10.2026`, `16. okt`). Mockupid näitavad sõnastust.
-- Veateade tuleb kujul `{ message, errorCode }`; kasutajale näidatakse `message`.
+- Veateade tuleb kujul `{ message, errorCode }`. `message` on inglise keeles (arendajale); kasutajale
+  näidatakse eestikeelset teksti `errorCode` järgi failist `src/utils/errorMessages.js` (tundmatu kood →
+  üldine "Midagi läks valesti. Proovi uuesti.").
 - Valmis, kui: `npm run build` (ja `utils/` muutmisel `npm test`) läbib ning vaade on läbi
   proovitud 390px laiusel, liikme vaated ka 1280×800 juures, admini vaated laua laiusel,
   töötava backendi vastu.

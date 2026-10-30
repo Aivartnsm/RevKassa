@@ -17,7 +17,7 @@ Spring Boot 4, Java 21, Gradle. Pakett `ee.revkassa`. Failide paigutus: [docs/ba
 - Mapperi meetodid: `to<Dto>(entiteet)`, listi jaoks mitmuses `to<Dto>s(list)`, entiteediks `to<Entiteet>(dto)`, uuendamiseks `update<Entiteet>(dto, @MappingTarget entiteet)`.
 - Repository meetodid: lühike ja tähenduslik nimi + `@Query` named parameters stiilis (nt `findActiveProducts()`), mitte pikk tuletatud nimi.
 - Service'is üksiku kirje kohustuslik leidmine: `getValid<Entiteet>By(id)` → viskab `PrimaryKeyNotFoundException`.
-- Kood, API väljad, tabelid ja enumid inglise keeles; kasutajale nähtavad veateated eesti keeles.
+- Kood, API väljad, tabelid, enumid ja veateated (`ApiError.message`) inglise keeles. Eestikeelse teksti näitab kasutajale frontend `errorCode` järgi.
 
 ## DTO-d ja mapperid
 
@@ -31,7 +31,7 @@ Spring Boot 4, Java 21, Gradle. Pakett `ee.revkassa`. Failide paigutus: [docs/ba
 
 - Erindid on `infrastructure/exception/` all: `PrimaryKeyNotFoundException` (404, kirjet id järgi ei leitud), `DataNotFoundException` (404, päringu tulemus puudub), `ForbiddenException` (403, äri- või õigusreegel ei luba).
 - Ärireegli konflikt (nt "tagasivõtmise aeg on möödas", vananenud versioon): `ForbiddenException` koos vastava `Error` enum'i väärtusega. Optimistlik lukk (`@Version`) annab 409.
-- Vastuse keha on alati `ApiError { message, errorCode }`. `message` on eestikeelne ja UI näitab seda otse. `errorCode` on täisarv, mille järgi frontend saab käitumist hargnema panna.
+- Vastuse keha on alati `ApiError { message, errorCode }`, vajadusel valikuliste väljadega (väljavead, `remainingAttempts`, `nextLockoutSeconds`), mis on JSON-is ainult väärtuse olemasolul. Arvulist infot, mida UI tekstis vajab, ei panda `message` sisse, vaid eraldi välja. `message` on ingliskeelne (arendajale ja logidele). `errorCode` on täisarv: frontend näitab selle järgi kasutajale eestikeelset teksti ja hargneb käitumist. Iga uus `Error` väärtus vajab seega ka frontendi vastendust.
 - Kõik veateated ja koodid on ühes `Error` enum'is (`infrastructure/error/Error.java`), mitte laiali stringidena.
 - `@RestControllerAdvice` (`infrastructure/error/RestExceptionHandler`) teisendab erindid ja valideerimisvead (400) `ApiError`-iks.
 

@@ -38,7 +38,7 @@ frontend/src/
 - **Liikme ja admini vaated** on samas kaustas, admini omad eesliitega `Admin`. Route'i `meta` ütleb, kumb navigatsioon ja millist sessiooni on vaja (`meta: { member: true }` / `meta: { admin: true }`).
 - **API kutsed ainult `api-services/` kaudu.** Komponendid ei kutsu axios'it otse. Service funktsioon tagastab axios'e promise'i; vaade lisab `.then()/.catch()/.finally()`.
 - **axios'e seaded** on `main.js`-is: CSRF töötab automaatselt (Spring saadab `XSRF-TOKEN` küpsise, axios saadab `X-XSRF-TOKEN` päise). Response interceptor suunab 401 korral sisselogimisse (liige → PIN, admin → admini sisselogimine).
-- **Veateade** tuleb backendist kujul `{ message, errorCode }` (`error.response.data`). Kasutajale näidatakse `message`, `errorCode` järgi hargneb käitumine (nt PIN-i lukustus).
+- **Veateade** tuleb backendist kujul `{ message, errorCode }` (`error.response.data`). `message` on inglise keeles ja mõeldud arendajale. Kasutajale näidatakse eestikeelset teksti `errorCode` järgi (`utils/errorMessages.js`); `errorCode` järgi hargneb ka käitumine (nt PIN-i lukustus). Arvud tekstis tulevad `ApiError` valikulistest väljadest (nt `remainingAttempts`, `nextLockoutSeconds`) ja `Retry-After` päisest.
 - **Jagatud olek:**
   - andmed liiguvad vanemalt lapsele **props**-iga ja tagasi **emit**-iga;
   - sisselogitud liikme info (nimi, roll, saldo) on `sessionStorage`'is (`utils/session.js`), tõde on alati `GET /api/me`;

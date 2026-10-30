@@ -15,7 +15,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 1 — Alus
 
-- [ ] **B01 · Andmebaasi skriptid ja sõltuvused** (M)
+- [x] **B01 · Andmebaasi skriptid ja sõltuvused** (M)
   `docs/database/1_reset_database.sql`, `2_create.sql` (kõik 16 tabelit, piirangud, FK-d, indeksid täpselt
   nagu DB-MODEL.md-s, k.a 5 liikmetaset) ja `3_import.sql` (näidisliikmed, -tooted, -tarned).
   `build.gradle`-sse MapStruct (+ `lombok-mapstruct-binding`) ja springdoc-openapi (Swagger UI).
@@ -23,8 +23,9 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `ddl-auto=validate`-ga, Swagger UI avaneb ja test kontrollib, et kõik tabelid on olemas.
 
 - [ ] **B02 · Infrastruktuur ja vead** (S) — pärast B01
-  `infrastructure/`: `ApiError { message, errorCode }`, `Error` enum (eestikeelsed sõnumid +
-  koodid), `PrimaryKeyNotFoundException`, `DataNotFoundException`, `ForbiddenException`,
+  `infrastructure/`: `ApiError { message, errorCode }` + valikulised väljad, mis tulevad JSON-isse ainult
+  väärtuse olemasolul (`@JsonInclude(NON_NULL)`): väljavead (400), `remainingAttempts`, `nextLockoutSeconds` (B05), `Error` enum (ingliskeelsed sõnumid +
+  koodid; UI tekst tuleb frontendist koodi järgi), `PrimaryKeyNotFoundException`, `DataNotFoundException`, `ForbiddenException`,
   `RestExceptionHandler` (`@RestControllerAdvice`, valideerimisvead 400 koos väljadega,
   optimistlik lukk 409). `Clock` bean (testid kontrollivad aega), JSON seaded (ajatemplid
   ISO-8601, raha täisarvuliste sentidena).
@@ -50,8 +51,9 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Kliendi IP kaupa: pärast 5 valet PIN-i lukusta 1 minutiks; pärast seda lukustab iga järgmine
   vale PIN uuesti, tasemed 5 min → 10 min → 30 min → 1 h → 1 päev (edasi 1 päev). Õnnestumisel
   nulli loendur ja tase. Lukustuse ajal ei kontrollita PIN-i üldse. Mälus hoidmine sobib (üks
-  instants). Logi ebaõnnestumised ja lukustused ilma PIN-ita. Lukustatud päring → 429, `ApiError`
-  oma `errorCode`-iga ja `Retry-After` päis (sekundid), mille järgi UI näitab loendurit.
+  instants). Logi ebaõnnestumised ja lukustused ilma PIN-ita. Vale PIN enne lukustust → 403 `remainingAttempts`-iga. Lukustatud päring → 429, `ApiError`
+  oma `errorCode`-iga ja `nextLockoutSeconds`-iga (järgmise lukustuse pikkus) ning `Retry-After` päis
+  (sekundid), mille järgi UI näitab loendurit.
   Valmis, kui: fikseeritud `Clock`-iga testid läbivad esimese lukustuse 5. vea järel, iga
   taseme pikkuse, 1 päeva lae, lukustuse ajal tehtud katse (ei pikenda ega kontrolli PIN-i) ja
   nullimise õnnestumisel.

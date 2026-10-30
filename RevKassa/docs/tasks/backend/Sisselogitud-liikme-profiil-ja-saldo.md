@@ -78,13 +78,14 @@ lõuendi `Main.dc.html` päises. Tavaliige: Kaspar Kask (`id` 2, saldo `-2740`);
 
 ## Veaolukorrad
 
-Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02).
+Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02). `message` on inglise
+keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `errorCode` järgi.
 
-| Olukord | Status code | Response body |
-|---|---|---|
-| Sessioon puudub või on aegunud | 401 Unauthorized | `{ "message": "Sessioon on aegunud. Logi uuesti sisse.", "errorCode": 115 }` |
-| Liige on sessiooni ajal mitteaktiivseks muudetud | 403 Forbidden | `{ "message": "Konto ei ole aktiivne. Võta ühendust adminiga.", "errorCode": 112 }` |
-| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Midagi läks valesti. Proovi uuesti.", "errorCode": 500 }` |
+| Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
+|---|---|---|---|
+| Sessioon puudub või on aegunud | 401 Unauthorized | `{ "message": "Session expired or missing.", "errorCode": 115 }` | Sessioon on aegunud. Logi uuesti sisse. |
+| Liige on sessiooni ajal mitteaktiivseks muudetud | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
+| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Unexpected server error.", "errorCode": 500 }` | Midagi läks valesti. Proovi uuesti. |
 
 Märkused:
 - 401 vastuse `ApiError` keha tuleb Spring Security `AuthenticationEntryPoint`-ist (B04), mitte

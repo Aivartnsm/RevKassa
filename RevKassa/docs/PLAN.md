@@ -132,7 +132,8 @@ Arve e-kirjad
 Keel
 - Kogu UI tekst on eesti keeles, kirjutatud otse Vue komponentidesse (i18n teeki pole; üks
   keel). Raha `27,40 €`, kuupäevad `16.10.2026`, kõikjal `et-EE` vorming.
-- API veateated (`ApiError.message`) on eesti keeles, sest UI näitab neid. Enumid,
+- API veateated (`ApiError.message`) on **inglise keeles** — arendajale, Swaggerile ja logidele. UI
+  näitab kasutajale eestikeelset teksti `errorCode` järgi (üks vastendusfail frontendis). Enumid,
   väljanimed, logid ja kood on inglise keeles.
 
 Liikmetasemed
@@ -192,7 +193,7 @@ AI abiline (valikuline)
   `persistence/<entiteet>/` (entiteet, repository, mapper), `infrastructure/` (vead,
   turvalisus, konfiguratsioon, e-post, AI). Vt [backendi struktuur](backend/projekti-struktuur.md).
 - Vead: `infrastructure/` erindid (`PrimaryKeyNotFoundException`, `DataNotFoundException`,
-  `ForbiddenException`), vastuse keha `ApiError { message, errorCode }`, sõnumid ja koodid
+  `ForbiddenException`), vastuse keha `ApiError { message, errorCode }` (+ valikulised väljad nagu `remainingAttempts`), sõnumid ja koodid
   ühes `Error` enum'is.
 - Andmebaas: PostgreSQL 16 WSL-is (`localhost:5432`, andmebaas/kasutaja/parool `revkassa`).
   Skeem on failides `docs/database/1_reset_database.sql`, `2_create.sql`, `3_import.sql`, mida käivitatakse

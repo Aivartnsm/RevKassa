@@ -94,15 +94,16 @@ luuakse esimene admin B06-s seadetest; `2_create.sql`-is paroole pole.
 
 ## Veaolukorrad
 
-Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02).
+Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02). `message` on inglise
+keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `errorCode` järgi.
 
-| Olukord | Status code | Response body |
-|---|---|---|
-| `email` või `password` puudub / tühi, `email` pole e-posti kujul | 400 Bad Request | `{ "message": "Sisesta e-post ja parool.", "errorCode": 120 }` (valideerimisvigade väljad B02 järgi) |
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) |
-| E-postiga liiget pole, liige pole `ADMIN` või parool on vale | 403 Forbidden | `{ "message": "Vale e-post või parool.", "errorCode": 114 }` |
-| E-post ja parool õiged, aga admin on mitteaktiivne (`active = false`) | 403 Forbidden | `{ "message": "Konto ei ole aktiivne. Võta ühendust adminiga.", "errorCode": 112 }` |
-| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Midagi läks valesti. Proovi uuesti.", "errorCode": 500 }` |
+| Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
+|---|---|---|---|
+| `email` või `password` puudub / tühi, `email` pole e-posti kujul | 400 Bad Request | `{ "message": "Email and password are required.", "errorCode": 120 }` (valideerimisvigade väljad B02 järgi) | Sisesta e-post ja parool. |
+| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| E-postiga liiget pole, liige pole `ADMIN` või parool on vale | 403 Forbidden | `{ "message": "Wrong email or password.", "errorCode": 114 }` | Vale e-post või parool. |
+| E-post ja parool õiged, aga admin on mitteaktiivne (`active = false`) | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
+| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Unexpected server error.", "errorCode": 500 }` | Midagi läks valesti. Proovi uuesti. |
 
 Märkused:
 - Kõik kolm vale-andmete juhtumit annavad **sama** vastuse, et ei saaks teada, kas e-post on

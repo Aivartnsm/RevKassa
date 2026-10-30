@@ -33,7 +33,7 @@ Kontrolli enne iga kihi juures, mis on juba olemas — sageli puudub ainult cont
 - AI abiline: ainult admin, `EventAssistant` kaudu, ainult ürituse andmed (mitte nimed, e-post, saldod), midagi ei kirjutata ilma admini nõusolekuta. Testides võlts-abiline.
 - E-kirjad ainult `Mailer` liidese kaudu, saldot ei muuda; testides võlts-`Mailer`.
 - Sisselogimine: liige ainult unikaalse 6-kohalise PIN-iga (`pin_hmac`, mitte kunagi lihtsalt ega logis), katsete piirang, 1 min tegevusetus. `/api/admin/**` vajab eraldi e-posti + parooli sisselogimist.
-- UI tekst, e-kirjad ja `ApiError.message` on eesti keeles; kood, enumid, tabelid ja API väljad inglise keeles.
+- UI tekst ja e-kirjad on eesti keeles; kood, enumid, tabelid, API väljad ja `ApiError.message` inglise keeles. Kasutajale näitab eestikeelse veateate frontend `errorCode` järgi (`utils/errorMessages.js`) — uus `Error` väärtus vajab sinna vastet.
 
 ### Testid
 - Service loogika: `@SpringBootTest` päris Postgresi vastu (vt `run-revkassa`), iga test `@Transactional`. Kontrolli DB-MODEL.md invariante.

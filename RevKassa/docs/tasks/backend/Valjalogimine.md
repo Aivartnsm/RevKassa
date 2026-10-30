@@ -34,10 +34,10 @@ servlet-sessioon). Väljalogimine ei muuda `member` rida.
 
 ## Veaolukorrad
 
-| Olukord | Status code | Response body |
-|---|---|---|
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) |
-| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Midagi läks valesti. Proovi uuesti.", "errorCode": 500 }` |
+| Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
+|---|---|---|---|
+| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Unexpected server error.", "errorCode": 500 }` | Midagi läks valesti. Proovi uuesti. |
 
 Puuduv või aegunud sessioon **ei ole** viga (204).
 

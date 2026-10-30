@@ -105,17 +105,18 @@ saldo `-2740`); mitteaktiivne: Kertu Mets (PIN `666666`). Arenduses `REVKASSA_PI
 
 ## Veaolukorrad
 
-Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02).
+Veakoodid on ettepanekud — lõplikud väärtused määratakse `Error` enum'is (B02). `message` on inglise
+keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `errorCode` järgi.
 
-| Olukord | Status code | Response body |
-|---|---|---|
-| `pin` puudub, ei ole string või ei ole täpselt 6 numbrit. Lukustuse loendurisse ei lähe (PIN-i ei kontrollita). | 400 Bad Request | `{ "message": "PIN-kood peab olema täpselt 6 numbrit.", "errorCode": 110 }` |
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) |
-| Vale PIN, lukustuseni on katseid jäänud (1.–4. viga järjest) | 403 Forbidden | `{ "message": "Vale PIN-kood. Veel 4 katset enne lukustust.", "errorCode": 111 }` (arv väheneb: 4 → 1, "Veel 1 katse") |
-| PIN on õige, aga liige on mitteaktiivne (`active = false`). Loendurisse ei lähe. | 403 Forbidden | `{ "message": "Konto ei ole aktiivne. Võta ühendust adminiga.", "errorCode": 112 }` |
-| Vale PIN käivitab lukustuse: 5. viga järjest (1 min) või iga vale PIN pärast eelmise lukustuse lõppu (5 min → 10 min → 30 min → 1 h → 1 päev, edasi 1 päev) | 429 Too Many Requests, päis `Retry-After: <sekundid>` | `{ "message": "Liiga palju valesid PIN-koode. Proovi uuesti hiljem.", "errorCode": 113 }` |
-| Päring lukustuse ajal (ka õige PIN-iga). PIN-i ei kontrollita, lukustust ei pikendata. | 429 Too Many Requests, `Retry-After: <järelejäänud sekundid>` | `{ "message": "Liiga palju valesid PIN-koode. Proovi uuesti hiljem.", "errorCode": 113 }` |
-| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Midagi läks valesti. Proovi uuesti.", "errorCode": 500 }` |
+| Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
+|---|---|---|---|
+| `pin` puudub, ei ole string või ei ole täpselt 6 numbrit. Lukustuse loendurisse ei lähe (PIN-i ei kontrollita). | 400 Bad Request | `{ "message": "PIN must be exactly 6 digits.", "errorCode": 110 }` | PIN-kood peab olema täpselt 6 numbrit. |
+| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| Vale PIN, lukustuseni on katseid jäänud (1.–4. viga järjest) | 403 Forbidden | `{ "message": "Wrong PIN. 4 attempts left before lockout.", "errorCode": 111, "remainingAttempts": 4 }` (arv väheneb: 4 → 1) | Vale PIN-kood. Veel N katset enne lukustust. (N = `remainingAttempts`; 1 → "Veel 1 katse") |
+| PIN on õige, aga liige on mitteaktiivne (`active = false`). Loendurisse ei lähe. | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
+| Vale PIN käivitab lukustuse: 5. viga järjest (1 min) või iga vale PIN pärast eelmise lukustuse lõppu (5 min → 10 min → 30 min → 1 h → 1 päev, edasi 1 päev) | 429 Too Many Requests, päis `Retry-After: <sekundid>` | `{ "message": "Too many wrong PINs. Try again later.", "errorCode": 113, "nextLockoutSeconds": 300 }` | Liiga palju valesid PIN-koode. Proovi uuesti hiljem. |
+| Päring lukustuse ajal (ka õige PIN-iga). PIN-i ei kontrollita, lukustust ei pikendata. | 429 Too Many Requests, `Retry-After: <järelejäänud sekundid>` | `{ "message": "Too many wrong PINs. Try again later.", "errorCode": 113, "nextLockoutSeconds": 300 }` | Liiga palju valesid PIN-koode. Proovi uuesti hiljem. |
+| Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Unexpected server error.", "errorCode": 500 }` | Midagi läks valesti. Proovi uuesti. |
 
 Märkused:
 - Vale PIN on ärireegli rikkumine (`ForbiddenException`, `backend/CLAUDE.md`), mitte 401.
@@ -123,10 +124,14 @@ Märkused:
 - Iga vale PIN ja iga lukustus logitakse IP ja ajaga, **ilma PIN-ita**.
 - Kliendi IP = `request.getRemoteAddr()` (rakendus ei ole proxy taga; kui väljalaskes tuleb proxy,
   vaadatakse `X-Forwarded-For` B21-s).
-- **Lahknevus lõuendiga:** lukustuse ekraan näitab ka rida "Järgmine vale PIN lukustab 5 minutiks."
-  `ApiError { message, errorCode }` seda infot ei kanna ja `Retry-After` annab ainult järelejäänud
-  aja. Kas lisada see sõnumisse (nt "… Järgmine vale PIN lukustab 5 minutiks."), lisada eraldi
-  päis või jätta rida UI-st välja, otsustatakse enne B05 implementeerimist.
+- **Valikulised väljad `ApiError`-is** (B02; JSON-is ainult siis, kui väärtus on olemas —
+  `@JsonInclude(NON_NULL)`): UI ehitab eestikeelse teksti `errorCode` + nende väljade järgi, mitte
+  ingliskeelsest `message`-st.
+  - `remainingAttempts` (403, kood 111) — mitu valet PIN-i on enne lukustust veel lubatud (4 → 1).
+    Ainult enne esimest lukustust; pärast seda lukustab iga vale PIN kohe (429).
+  - `nextLockoutSeconds` (429, kood 113) — kui pikalt lukustab **järgmine** vale PIN pärast selle
+    lukustuse lõppu (60 → 300 → 600 → 1800 → 3600 → 86400, edasi 86400). UI: "Järgmine vale PIN
+    lukustab 5 minutiks." Järelejäänud aeg tuleb `Retry-After` päisest.
 
 ## Vastuvõtu kriteeriumid
 
@@ -141,14 +146,14 @@ B04 — sisselogimine:
 - [ ] PIN-i ei ole üheski logireas ega vastuses.
 
 B05 — lukustus (fikseeritud `Clock`-iga):
-- [ ] 1.–4. vale PIN → 403 õige järelejäänud katsete arvuga sõnumis.
-- [ ] 5. vale PIN → 429, `Retry-After: 60`.
-- [ ] Pärast lukustuse lõppu lukustab iga järgmine vale PIN kohe: 300 → 600 → 1800 → 3600 → 86400 s; edasi jääb 86400.
+- [ ] 1.–4. vale PIN → 403 koodiga 111 ja `remainingAttempts` 4 → 1.
+- [ ] 5. vale PIN → 429, `Retry-After: 60`, `nextLockoutSeconds: 300`.
+- [ ] Pärast lukustuse lõppu lukustab iga järgmine vale PIN kohe: 300 → 600 → 1800 → 3600 → 86400 s; edasi jääb 86400. `nextLockoutSeconds` näitab alati järgmist taset (lael 86400).
 - [ ] Päring lukustuse ajal (ka õige PIN-iga) → 429 järelejäänud ajaga; PIN-i ei kontrollita ja lukustus ei pikene.
-- [ ] Õnnestunud sisselogimine nullib loenduri ja taseme (järgmine viga on jälle "Veel 4 katset").
+- [ ] Õnnestunud sisselogimine nullib loenduri ja taseme (järgmise vea järel on jälle 4 katset).
 - [ ] Lukustus on IP kaupa: teise IP päringud ei ole mõjutatud.
 - [ ] Ebaõnnestumised, lukustused ja õnnestunud sisselogimised logitakse ilma PIN-ita.
 
 Testid:
-- [ ] `@WebMvcTest` + MockMvc: valideerimine, staatuskoodid, `ApiError` keha ja `Retry-After` päis.
+- [ ] `@WebMvcTest` + MockMvc: valideerimine, staatuskoodid, `ApiError` keha (k.a `remainingAttempts` / `nextLockoutSeconds`, mis teistes vastustes puuduvad) ja `Retry-After` päis.
 - [ ] `@SpringBootTest` (päris Postgres, `@Transactional`): õnnestunud sisselogimine, vale PIN, mitteaktiivne liige, lukustuse tasemed `Clock`-iga.
