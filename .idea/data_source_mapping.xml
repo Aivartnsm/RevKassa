@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/RevKassa/docs/database/1_reset_database.sql" value="4f7b06f0-e7f0-4e48-8ab4-307c4a0ee0c1" />
+    <file url="file://$PROJECT_DIR$/RevKassa/docs/database/2_create.sql" value="4f7b06f0-e7f0-4e48-8ab4-307c4a0ee0c1" />
+    <file url="file://$PROJECT_DIR$/RevKassa/docs/database/3_import.sql" value="4f7b06f0-e7f0-4e48-8ab4-307c4a0ee0c1" />
+  </component>
+</project>
