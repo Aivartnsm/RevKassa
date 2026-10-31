@@ -197,7 +197,7 @@ public class MingiKonfiguratsioon {
 }
 ```
 
-> **Mõtle:** PLAN.md ütleb, et kuutasu töö jookseb kell 06:00 *Europe/Tallinn*. Kas kell peaks olema
+> **Mõtle:** `docs/BACKEND-TASKS.md` ütleb, et kuutasu töö jookseb kell 06:00 *Europe/Tallinn*. Kas kell peaks olema
 > UTC-s või Tallinna ajas? Ja kuidas test hiljem asendab selle fikseeritud kellaga
 > (`Clock.fixed(...)`)?
 
