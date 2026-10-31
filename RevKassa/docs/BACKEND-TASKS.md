@@ -22,7 +22,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: skriptid jooksevad tühjale andmebaasile vigadeta, rakendus käivitub
   `ddl-auto=validate`-ga, Swagger UI avaneb ja test kontrollib, et kõik tabelid on olemas.
 
-- [ ] **B02 · Infrastruktuur ja vead** (S) — pärast B01
+- [x] **B02 · Infrastruktuur ja vead** (S) — pärast B01
   `infrastructure/`: `ApiError { message, errorCode }` + valikulised väljad, mis tulevad JSON-isse ainult
   väärtuse olemasolul (`@JsonInclude(NON_NULL)`): väljavead (400), `remainingAttempts`, `nextLockoutSeconds` (B05), `Error` enum (ingliskeelsed sõnumid +
   koodid; UI tekst tuleb frontendist koodi järgi), `PrimaryKeyNotFoundException`, `DataNotFoundException`, `ForbiddenException`,
