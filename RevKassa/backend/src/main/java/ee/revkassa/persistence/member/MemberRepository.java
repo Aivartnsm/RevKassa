@@ -13,4 +13,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("select (count(m) > 0) from Member m where m.pinHmac = :pinHmac")
     boolean existsByPinHmac(String pinHmac);
 
+    @Query("select m from Member m where lower(m.email) = lower(:email)")
+    Optional<Member> findByEmail(String email);
+
+    @Query("select (count(m) > 0) from Member m where m.id = :id and m.active = true")
+    boolean isActiveMember(Long id);
+
 }

@@ -96,14 +96,14 @@ Märkused:
 
 ## Vastuvõtu kriteeriumid
 
-- [ ] Endpoint `GET /api/me` on olemas ja nõuab sisselogimist.
-- [ ] PIN-sessiooniga → 200, vastus `{ memberId, displayName, role, balanceCents }` andmebaasi väärtustega.
-- [ ] Parooliga sessiooniga → 200 sama kujuga, `loginMethod: "PASSWORD"`; admin `role: "ADMIN"`.
-- [ ] Saldo on värske: kui `balance_cents` andmebaasis muutub, näitab järgmine päring uut väärtust.
-- [ ] Negatiivne, null ja positiivne saldo tagastatakse õigesti (sentides, märgiga).
-- [ ] Ilma sessioonita / aegunud sessiooniga (1 min PIN, 30 min parool) → 401 `ApiError`-iga.
-- [ ] Mitteaktiivseks muudetud liige → 403, sessioon invalideeritakse.
-- [ ] Päring pikendab sessiooni (tegevusetuse taimer nullitakse).
-- [ ] Vastuses pole `pin_hmac`-i, `password_hash`-i ega e-posti.
-- [ ] PIN-sessioonis `loginMethod: "PIN"`.
-- [ ] MockMvc testid katavad õnnestumise mõlema sessioonitüübiga, 401 ja 403; `@SpringBootTest` kontrollib väärtusi päris Postgresist.
+- [x] Endpoint `GET /api/me` on olemas ja nõuab sisselogimist.
+- [x] PIN-sessiooniga → 200, vastus `{ memberId, displayName, role, balanceCents, loginMethod }` andmebaasi väärtustega.
+- [x] Parooliga sessiooniga → 200 sama kujuga, `loginMethod: "PASSWORD"`; admin `role: "ADMIN"`.
+- [x] Saldo on värske: kui `balance_cents` andmebaasis muutub, näitab järgmine päring uut väärtust.
+- [x] Negatiivne, null ja positiivne saldo tagastatakse õigesti (sentides, märgiga).
+- [x] Ilma sessioonita / aegunud sessiooniga (1 min PIN, 30 min parool) → 401 `ApiError`-iga.
+- [x] Mitteaktiivseks muudetud liige → 403, sessioon invalideeritakse.
+- [x] Päring pikendab sessiooni (tegevusetuse taimer nullitakse).
+- [x] Vastuses pole `pin_hmac`-i, `password_hash`-i ega e-posti.
+- [x] PIN-sessioonis `loginMethod: "PIN"`.
+- [x] MockMvc testid katavad õnnestumise mõlema sessioonitüübiga, 401 ja 403; `@SpringBootTest` kontrollib väärtusi päris Postgresist.

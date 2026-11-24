@@ -27,7 +27,7 @@ kunagi.
 ## Väljund
 
 **Response (200 OK):** sisselogitud liikme andmed, DTO `MemberSessionDto` (`controller/common/dto/`,
-sama mis `POST /api/auth/pin` ja `GET /api/me`). Vastusega tuleb `Set-Cookie` uue sessiooniküpsisega.
+sama mis `POST /api/auth/pin` ja `GET /api/me`). Vastusega tuleb uus `XSRF-TOKEN` küpsis (enne sisselogimist teada olnud CSRF token ei kehti edasi) ja `Set-Cookie` uue sessiooniküpsisega.
 
 ```json
 {
@@ -105,8 +105,8 @@ keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `erro
 
 | Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
 |---|---|---|---|
-| `email` või `password` puudub / tühi, `email` pole e-posti kujul | 400 Bad Request | `{ "message": "Email and password are required.", "errorCode": 120 }` (valideerimisvigade väljad B02 järgi) | Sisesta e-post ja parool. |
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| `email` või `password` puudub / tühi, `email` pole e-posti kujul | 400 Bad Request | `{ "message": "Validate fields", "errorCode": 103, "fieldErrors": {...} }` (B02 üldine valideerimisviga) | Sisesta e-post ja parool. |
+| CSRF token puudub või on vale | 403 Forbidden | `{ "message": "Access denied.", "errorCode": 118 }` (`SecurityErrorHandler`) | Midagi läks valesti. Värskenda lehte. |
 | E-postiga liiget pole, parool on määramata või vale; lukustuseni on katseid jäänud | 403 Forbidden | `{ "message": "Wrong email or password.", "errorCode": 114, "remainingAttempts": 4 }` | Vale e-post või parool. (Kui parool on määramata, kasuta "Unustasid parooli?".) |
 | E-post ja parool õiged, aga liige on mitteaktiivne (`active = false`) | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
 | Liiga palju valesid katseid sellelt IP-lt (B05 tasemed) või päring lukustuse ajal | 429 Too Many Requests, `Retry-After: <sekundid>` | `{ "message": "Too many failed logins. Try again later.", "errorCode": 117, "nextLockoutSeconds": 300 }` | Liiga palju ebaõnnestunud katseid. Proovi uuesti hiljem. |
@@ -123,15 +123,15 @@ Märkused:
 
 ## Vastuvõtu kriteeriumid
 
-- [ ] Endpoint `POST /api/auth/login` on olemas ja kättesaadav ilma sisselogimiseta (CSRF tokeniga), igast seadmest.
-- [ ] Õige e-post ja parool aktiivse liikmega → 200, vastus `{ memberId, displayName, role, balanceCents, loginMethod: "PASSWORD" }`, `Set-Cookie` uue sessiooni id-ga.
-- [ ] E-posti otsing on tõstutundetu (`KASPAR@example.org` töötab).
+- [x] Endpoint `POST /api/auth/login` on olemas ja kättesaadav ilma sisselogimiseta (CSRF tokeniga), igast seadmest.
+- [x] Õige e-post ja parool aktiivse liikmega → 200, vastus `{ memberId, displayName, role, balanceCents, loginMethod: "PASSWORD" }`, `Set-Cookie` uue sessiooni id-ga.
+- [x] E-posti otsing on tõstutundetu (`KASPAR@example.org` töötab).
 - [ ] `MEMBER`-i sessioon annab ligipääsu liikme endpointidele (k.a `POST /api/purchases`), aga `/api/admin/**` → 403.
-- [ ] `ADMIN`-i sessioon annab ligipääsu `/api/admin/**` alla ja liikme endpointidele.
-- [ ] Sessioon aegub 30 minuti tegevusetuse järel.
-- [ ] Puuduv / tühi / vale kujuga sisend → 400 `ApiError`-iga.
-- [ ] Tundmatu e-post, määramata parooliga liige ja vale parool → sama 403 vastus, sessiooni ei looda.
-- [ ] Mitteaktiivne liige → 403, sessiooni ei looda.
+- [x] `ADMIN`-i sessioon annab ligipääsu `/api/admin/**` alla ja liikme endpointidele.
+- [x] Sessioon aegub 30 minuti tegevusetuse järel.
+- [x] Puuduv / tühi / vale kujuga sisend → 400 `ApiError`-iga.
+- [x] Tundmatu e-post, määramata parooliga liige ja vale parool → sama 403 vastus, sessiooni ei looda.
+- [x] Mitteaktiivne liige → 403, sessiooni ei looda.
 - [ ] 5. vale katse samalt IP-lt → 429 (B05); teise IP katsed ei ole mõjutatud; PIN-i loendur ei muutu.
-- [ ] Parool ega selle räsi ei ole üheski logireas ega vastuses.
+- [x] Parool ega selle räsi ei ole üheski logireas ega vastuses.
 - [ ] MockMvc testid katavad õnnestumise (liige ja admin), valed andmed, määramata parooli, mitteaktiivse liikme, lukustuse ja sessiooni aegumise; `@SpringBootTest` päris Postgresi vastu bcrypt räsiga liikmega.

@@ -38,7 +38,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `findByPin()`. PIN-e ei logita kunagi.
   Valmis, kui: testid katavad räsi, unikaalsuse uue katse ja otsingu.
 
-- [ ] **B04 · Turvalisus ja sisselogimine** (L) — pärast B02, B03, B35
+- [x] **B04 · Turvalisus ja sisselogimine** (L) — pärast B02, B03, B35
   Spring Security sessiooniküpsise + CSRF-iga (küpsise token SPA jaoks, `XSRF-TOKEN`).
   `POST /api/auth/pin` → liikme sessioon, aegumine **1 min** — **ainult usaldatud seadmest**
   (kehtiv `REVKASSA_DEVICE` küpsis, B35); ilma selleta 403 `DEVICE_NOT_TRUSTED` ja PIN-i ei

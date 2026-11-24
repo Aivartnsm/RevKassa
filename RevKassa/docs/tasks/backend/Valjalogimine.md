@@ -16,6 +16,8 @@ küpsisest. Päring nõuab CSRF tokenit (`X-XSRF-TOKEN` päis küpsise `XSRF-TOK
 
 - Serveri sessioon invalideeritakse (`HttpSession.invalidate()` / Spring Security `logout()`).
 - Sessiooniküpsis kustutatakse (`Set-Cookie` aegunud küpsisega).
+- CSRF küpsis `XSRF-TOKEN` kustutatakse samuti; järgmine päring saab uue tokeni (eelmise liikme
+  tokenit ei jää tahvlisse).
 - Lõpeb kogu sessioon — nii PIN- kui parooliga sessioon, sest brauseril on üks sessioon.
 - Seadmeküpsist `REVKASSA_DEVICE` **ei** kustutata: tahvel jääb usaldatud seadmeks.
 - Teenus on idempotentne: ka ilma sessioonita või aegunud sessiooniga päring → 204.
@@ -37,7 +39,7 @@ servlet-sessioon). Väljalogimine ei muuda `member` rida.
 
 | Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
 |---|---|---|---|
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| CSRF token puudub või on vale | 403 Forbidden | `{ "message": "Access denied.", "errorCode": 118 }` (`SecurityErrorHandler`) | Midagi läks valesti. Värskenda lehte. |
 | Ootamatu serveri viga | 500 Internal Server Error | `{ "message": "Unexpected server error.", "errorCode": 500 }` | Midagi läks valesti. Proovi uuesti. |
 
 Puuduv või aegunud sessioon **ei ole** viga (204).
@@ -47,11 +49,11 @@ joonisel on. Endpoint on mõlemale sama; nupu lisamine on frontendi (F03 / admin
 
 ## Vastuvõtu kriteeriumid
 
-- [ ] Endpoint `POST /api/auth/logout` on olemas, ei nõua sisselogimist, nõuab CSRF tokenit.
-- [ ] PIN-sessiooniga päring → 204; sama küpsisega järgmine `GET /api/me` → 401.
-- [ ] Admini parooliga sessiooniga päring → 204; sama küpsisega järgmine `/api/admin/**` päring → 401.
-- [ ] Seadmeküpsis jääb alles: pärast väljalogimist töötab samas seadmes jälle PIN.
-- [ ] Vastus kustutab sessiooniküpsise.
-- [ ] Ilma sessioonita või aegunud sessiooniga päring → 204.
-- [ ] Ilma CSRF tokenita → 403, sessioon jääb kehtima.
-- [ ] MockMvc testid katavad kõik ülaltoodud juhtumid.
+- [x] Endpoint `POST /api/auth/logout` on olemas, ei nõua sisselogimist, nõuab CSRF tokenit.
+- [x] PIN-sessiooniga päring → 204; sama küpsisega järgmine `GET /api/me` → 401.
+- [x] Admini parooliga sessiooniga päring → 204; sama küpsisega järgmine `/api/admin/**` päring → 401.
+- [x] Seadmeküpsis jääb alles: pärast väljalogimist töötab samas seadmes jälle PIN.
+- [x] Vastus kustutab sessiooniküpsise ja `XSRF-TOKEN` küpsise.
+- [x] Ilma sessioonita või aegunud sessiooniga päring → 204.
+- [x] Ilma CSRF tokenita → 403, sessioon jääb kehtima.
+- [x] MockMvc testid katavad kõik ülaltoodud juhtumid.

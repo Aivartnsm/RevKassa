@@ -25,7 +25,7 @@ ee/revkassa/
 └── infrastructure/
     ├── error/                          ApiError, Error enum, RestExceptionHandler
     ├── exception/                      PrimaryKeyNotFoundException, DataNotFoundException, ForbiddenException
-    ├── security/                       Spring Security, PIN ja admini sisselogimine, PinService
+    ├── security/                       Spring Security, sessioonid, PIN/parool/seade
     ├── config/                         Clock bean, JSON seaded, @ConfigurationProperties
     ├── mail/                           Mailer liides, SMTP ja logiv implementatsioon
     └── ai/                             EventAssistant liides ja implementatsioonid

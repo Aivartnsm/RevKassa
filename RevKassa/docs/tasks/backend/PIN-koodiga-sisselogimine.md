@@ -30,7 +30,7 @@ kui küpsist pole, see on tundmatu või seade on tühistatud → 403 ja PIN-i ei
 
 **Response (200 OK):** sisselogitud liikme andmed, millega UI täidab päise (nimi ja saldo) ja
 suunab ostuvaatesse (`/buy`). DTO `MemberSessionDto` (`controller/common/dto/`, sama kuju
-mis `POST /api/auth/login` ja `GET /api/me` vastusel). Vastusega tuleb `Set-Cookie` uue
+mis `POST /api/auth/login` ja `GET /api/me` vastusel). Vastusega tuleb uus `XSRF-TOKEN` küpsis (enne sisselogimist teada olnud CSRF token ei kehti edasi) ja `Set-Cookie` uue
 sessiooniküpsisega (sessiooni id vahetatakse sisselogimisel).
 
 ```json
@@ -142,8 +142,8 @@ keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `erro
 
 | Olukord | Status code | Response body | UI tekst (eesti, `errorCode` järgi) |
 |---|---|---|---|
-| `pin` puudub, ei ole string või ei ole täpselt 6 numbrit. Lukustuse loendurisse ei lähe (PIN-i ei kontrollita). | 400 Bad Request | `{ "message": "PIN must be exactly 6 digits.", "errorCode": 110 }` | PIN-kood peab olema täpselt 6 numbrit. |
-| CSRF token puudub või on vale | 403 Forbidden | Spring Security vastus (B04) | — |
+| `pin` puudub, ei ole string või ei ole täpselt 6 numbrit. Lukustuse loendurisse ei lähe (PIN-i ei kontrollita). | 400 Bad Request | `{ "message": "Validate fields", "errorCode": 103, "fieldErrors": { "pin": "PIN must be exactly 6 digits" } }` (B02 üldine valideerimisviga) | PIN-kood peab olema täpselt 6 numbrit. |
+| CSRF token puudub või on vale | 403 Forbidden | `{ "message": "Access denied.", "errorCode": 118 }` (`SecurityErrorHandler`) | Midagi läks valesti. Värskenda lehte. |
 | Seadmeküpsis puudub, on tundmatu või seade on tühistatud. PIN-i ei kontrollita, loendurisse ei lähe. | 403 Forbidden | `{ "message": "PIN login is only allowed on a registered device.", "errorCode": 116 }` | Selles seadmes saab sisse logida ainult e-posti ja parooliga. |
 | Vale PIN, lukustuseni on katseid jäänud (1.–4. viga järjest) | 403 Forbidden | `{ "message": "Wrong PIN. 4 attempts left before lockout.", "errorCode": 111, "remainingAttempts": 4 }` (arv väheneb: 4 → 1) | Vale PIN-kood. Veel N katset enne lukustust. (N = `remainingAttempts`; 1 → "Veel 1 katse") |
 | PIN on õige, aga liige on mitteaktiivne (`active = false`). Loendurisse ei lähe. | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
@@ -154,8 +154,8 @@ keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `erro
 Märkused:
 - Vale PIN on ärireegli rikkumine (`ForbiddenException`, `backend/CLAUDE.md`), mitte 401.
 - Vale PIN-i vastus ei ütle midagi selle kohta, kas mõni sarnane PIN on olemas.
-- Seadme kontroll on enne valideerimist ja PIN-i kontrolli: usaldamata seadmest ei saa PIN-e
-  proovida isegi lukustuseni.
+- Seadme kontroll on enne PIN-i kontrolli: usaldamata seadmest ei saa PIN-e proovida isegi
+  lukustuseni. (Vormingu valideerimine `@Valid` jookseb enne seda — 400 ei paljasta midagi.)
 - Iga vale PIN ja iga lukustus logitakse seadme id, IP ja ajaga, **ilma PIN-ita**.
 - **Valikulised väljad `ApiError`-is** (B02; JSON-is ainult siis, kui väärtus on olemas —
   `@JsonInclude(NON_NULL)`): UI ehitab eestikeelse teksti `errorCode` + nende väljade järgi, mitte
@@ -169,15 +169,15 @@ Märkused:
 ## Vastuvõtu kriteeriumid
 
 B04 — sisselogimine:
-- [ ] Endpoint `POST /api/auth/pin` on olemas ja kättesaadav ilma sisselogimiseta (CSRF tokeniga).
-- [ ] Ilma seadmeküpsiseta, tundmatu või tühistatud seadme küpsisega → 403 koodiga 116 ka õige PIN-iga; sessiooni ei looda, lukustuse loendur ei muutu.
-- [ ] Õige PIN aktiivse liikmega usaldatud seadmes → 200, vastus `{ memberId, displayName, role, balanceCents, loginMethod: "PIN" }` andmebaasi väärtustega, `Set-Cookie` uue sessiooni id-ga; `trusted_device.last_used_at` uueneb.
-- [ ] Sessioon annab ligipääsu liikme endpointidele (nt `GET /api/me`) ja aegub 1 minuti tegevusetuse järel.
-- [ ] Admini PIN-iga loodud sessioon on liikme sessioon: `/api/admin/**` → keelatud.
-- [ ] Puuduv / vale formaadiga `pin` (`"12345"`, `"1234567"`, `"12a456"`, `123456` numbrina, puuduv väli) → 400 `ApiError`-iga.
-- [ ] Vale PIN → 403 `ApiError`-iga, sessiooni ei looda.
-- [ ] Mitteaktiivse liikme PIN → 403 `ApiError`-iga, sessiooni ei looda.
-- [ ] PIN-i ei ole üheski logireas ega vastuses.
+- [x] Endpoint `POST /api/auth/pin` on olemas ja kättesaadav ilma sisselogimiseta (CSRF tokeniga).
+- [x] Ilma seadmeküpsiseta, tundmatu või tühistatud seadme küpsisega → 403 koodiga 116 ka õige PIN-iga; sessiooni ei looda, lukustuse loendur ei muutu.
+- [x] Õige PIN aktiivse liikmega usaldatud seadmes → 200, vastus `{ memberId, displayName, role, balanceCents, loginMethod: "PIN" }` andmebaasi väärtustega, `Set-Cookie` uue sessiooni id-ga; `trusted_device.last_used_at` uueneb.
+- [x] Sessioon annab ligipääsu liikme endpointidele (nt `GET /api/me`) ja aegub 1 minuti tegevusetuse järel.
+- [x] Admini PIN-iga loodud sessioon on liikme sessioon: `/api/admin/**` → keelatud.
+- [x] Puuduv / vale formaadiga `pin` (`"12345"`, `"1234567"`, `"12a456"`, puuduv väli; JSON-arv `123456` teisendatakse stringiks ja on lubatud) → 400 `ApiError`-iga.
+- [x] Vale PIN → 403 `ApiError`-iga, sessiooni ei looda.
+- [x] Mitteaktiivse liikme PIN → 403 `ApiError`-iga, sessiooni ei looda.
+- [x] PIN-i ei ole üheski logireas ega vastuses.
 
 B05 — lukustus (fikseeritud `Clock`-iga):
 - [ ] 1.–4. vale PIN → 403 koodiga 111 ja `remainingAttempts` 4 → 1.

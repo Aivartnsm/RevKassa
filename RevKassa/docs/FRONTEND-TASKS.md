@@ -55,7 +55,17 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   (päis nime + saldoga, alumine tabiriba Osta · Konto · Logi välja);
   `navigation/AdminNavigation.vue` (laual ülemenüü, telefonis alumised tabid, "Logi välja").
   `App.vue` valib navigatsiooni route'i `meta` järgi.
-  Valmis, kui: guard'id suunavad õigesti ja mõlemad navigatsioonid töötavad mõlemal laiusel.
+  **Üks väljalogimise funktsioon** `utils/session.js`-is (`logout()`), mida kasutavad kõik
+  väljapääsud — "Logi välja", "Valmis, logi mind välja" (`/done`), tegevusetuse taimer (F05) ja
+  401 interceptor (F02): kutsub `POST /api/auth/logout` ja **`.finally()`-s** (ka siis, kui päring
+  ebaõnnestub, nt võrguviga) tühjendab `sessionStorage`'i täielikult (`sessionStorage.clear()`:
+  liikme info **ja** ostukorv), peatab tegevusetuse taimeri ning suunab avalehele `/`
+  (`router.replace`, et "tagasi" nupp ei viiks eelmise liikme vaatesse). Küpsiseid frontend ise ei
+  puuduta: `JSESSIONID` ja `XSRF-TOKEN` kustutab server, `REVKASSA_DEVICE` jääb alles.
+  `localStorage`'isse ei panda midagi liikme või ostuga seotut; PIN-i ega parooli ei salvestata kuhugi.
+  Valmis, kui: guard'id suunavad õigesti ja mõlemad navigatsioonid töötavad mõlemal laiusel; pärast
+  väljalogimist (ka ebaõnnestunud logout-päringu korral) on `sessionStorage` tühi, päises pole eelmise
+  liikme nime ega saldot ja "tagasi" nupp ei näita eelmise liikme lehti.
 
 - [ ] **F04 · Avaleht ja PIN-i klahvistik** (M) — vajab B04, B05, B35
   `LoginView.vue` (`/`) küsib `GET /api/auth/device`: usaldatud seadmes näitab PIN-i
@@ -68,8 +78,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F05 · Tegevusetuse väljalogimine** (S) — pärast F03
   `utils/idleLogout.js` (`start(ms, onExpire)`, `stop()`), käivitatakse `App.vue`-st: lähtestub
-  puudutuse/klahvi/kerimise peale; aegumisel logib välja, tühjendab `sessionStorage`'i
-  (sessioon + ostukorv) ja naaseb avalehele `/`; aeg sõltub `loginMethod`-ist: PIN **1 min**,
+  puudutuse/klahvi/kerimise peale; aegumisel kutsub F03 `logout()`-i (tühjendab `sessionStorage`'i —
+  sessioon + ostukorv — ja naaseb avalehele `/`); aeg sõltub `loginMethod`-ist: PIN **1 min**,
   parool **30 min**. Serveri 401 teeb sama.
   Valmis, kui: ühiktest võltstaimeritega; käsitsi kontroll, et ostukorv tühjeneb.
 

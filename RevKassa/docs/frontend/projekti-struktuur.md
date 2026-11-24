@@ -43,6 +43,7 @@ frontend/src/
   - andmed liiguvad vanemalt lapsele **props**-iga ja tagasi **emit**-iga;
   - sisselogitud liikme info (nimi, roll, saldo) on `sessionStorage`'is (`utils/session.js`), tõde on alati `GET /api/me`;
   - ostukorv on `sessionStorage`'is (`utils/basket.js`), sest see peab ostu- ja tellimusvaate vahel alles jääma; väljalogimisel see tühjendatakse.
+  - **väljalogimine käib alati läbi `utils/session.js` `logout()`-i** (nupp, `/done`, tegevusetus, 401): see tühjendab kogu `sessionStorage`'i ka siis, kui serveri päring ebaõnnestub. Baaritahvlit kasutavad järjest eri inimesed — eelmise liikme nimi, saldo ega ostukorv ei tohi järgmisele näha jääda. `localStorage`'it liikme andmete jaoks ei kasutata; PIN-i ja parooli ei salvestata kuskile.
   - Pinia't, composable'eid ega UI raamistikku ei kasutata.
 - **Raha** tuleb sentides; vorminda ainult `formatEuro(cents)` abil (`27,40 €`). Kuupäevad `formatDate()` abil (`16.10.2026`).
 
