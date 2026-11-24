@@ -89,12 +89,14 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   menüüsse pääseb päisest). Telefonis ja arvutis on see ainus sisselogimise viis.
 
 - [ ] **F30 · Parooli määramine ja unustatud parool** (S) — vajab B36
-  `SetPasswordView.vue` (`/set-password?token=`): uus parool kaks korda (≥ 10 märki, kattuvad),
+  Paroolireeglid (sama mis backendis `PasswordRules`): vähemalt 10 märki (kuni 72 baiti), suur- ja väiketäht, erimärk; sama märk ega järjestikune täht/number (`aaa`, `abc`, `123`, `321`) ei tohi olla kolm korda järjest. Kontrolli neid juba
+  sisestamisel (`utils/passwordRules.js`, kasutab ka F32) ja näita nimekirjana, mis on täidetud.
+  `SetPasswordView.vue` (`/set-password?token=`): uus parool kaks korda (paroolireeglid, kattuvad),
   õnnestumisel "Parool määratud" + nupp "Logi sisse"; aegunud/kasutatud link → "Link on aegunud
   või juba kasutatud. Küsi uus link." lingiga `/forgot-password`. `ForgotPasswordView.vue`:
   e-post → alati "Kui see e-post on meil olemas, saatsime sellele lingi."
   Veakoodid eesti keelde: 121 (link aegunud või kasutatud), 122 (429: liiga palju päringuid, proovi
-  hiljem), 103 `fieldErrors.password` (≥ 10 märki; liiga pikk). Admini "Saada kutse uuesti": 123 (e-kirja
+  hiljem), 103 `fieldErrors.password` (rikutud paroolireegel). Admini "Saada kutse uuesti": 123 (e-kirja
   ei õnnestunud saata, proovi uuesti).
   Valmis, kui: töötab 390px juures ja logiva saatjaga (link võetakse backendi logist).
 
@@ -145,8 +147,11 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Tahvel: vasakul saldo ja maksevorm, paremal ootel maksed ja ajalugu.
 
 - [ ] **F32 · Parooli muutmine** (S) — vajab B37
-  Konto lehel nupp "Muuda parooli" → praegune parool, uus kaks korda (≥ 10 märki). Õnnestumisel
+  Konto lehel nupp "Muuda parooli" → praegune parool, uus kaks korda (paroolireeglid). Õnnestumisel
   "Parool muudetud".
+  Veakoodid eesti keelde: 124 (praegune parool on vale, `remainingAttempts`), 429 + 117 (liiga palju
+  valesid katseid, `Retry-After`), 103 `fieldErrors.newPassword`. Liige ilma paroolita (ainult PIN)
+  saab 124 — tal tuleb parool määrata "Unustasid parooli?" lingiga.
 
 - [ ] **F29 · PIN-i muutmine** (S) — vajab B34
   Konto lehel nupp "Muuda PIN-koodi" → vorm: praegune PIN, uus PIN, uus PIN uuesti (numbriklaviatuur,

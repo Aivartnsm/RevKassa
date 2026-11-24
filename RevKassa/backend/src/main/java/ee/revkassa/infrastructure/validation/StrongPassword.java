@@ -9,17 +9,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * The value's UTF-8 form is at most {@link #value()} bytes. bcrypt uses only the first 72 bytes of a password
- * (and refuses to hash longer ones), while @Size counts characters: "ä" is 1 character but 2 bytes.
+ * A new password that follows {@link PasswordRules}. The field error names the first rule it breaks.
+ * null is left to @NotNull.
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-@Constraint(validatedBy = MaxUtf8BytesValidator.class)
-public @interface MaxUtf8Bytes {
+@Constraint(validatedBy = StrongPasswordValidator.class)
+public @interface StrongPassword {
 
-    int value();
-
-    String message() default "is too long";
+    String message() default "does not follow the password rules";
 
     Class<?>[] groups() default {};
 

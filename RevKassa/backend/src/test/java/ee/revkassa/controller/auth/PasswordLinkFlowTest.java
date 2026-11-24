@@ -35,7 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -57,7 +56,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PasswordLinkFlowTest {
 
     private static final String ADMIN_PASSWORD = "admin-password-123";
-    private static final String NEW_PASSWORD = "uus-parool-123";
+    private static final String NEW_PASSWORD = "Uus-Parool-579";
     private static final Pattern LINK = Pattern.compile("http://localhost:5173/set-password\\?token=([A-Za-z0-9_-]{43})\\n");
     private static final AtomicInteger COUNTER = new AtomicInteger();
 
@@ -302,7 +301,7 @@ class PasswordLinkFlowTest {
         String token = tokenFrom(fakeMailer.last());
         setPassword(token, NEW_PASSWORD).andExpect(status().isNoContent());
 
-        setPassword(token, "teine-parool-123")
+        setPassword(token, "Teine-Parool-529")
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value(121));
         assertThat(savedToken(token).getUsedAt()).isNotNull();
@@ -355,17 +354,23 @@ class PasswordLinkFlowTest {
     }
 
     @Test
-    void setPassword_tooShortOrTooManyBytes_returns400AndLinkStillWorks() throws Exception {
+    void setPassword_breaksPasswordRules_returns400NamingTheRuleAndLinkStillWorks() throws Exception {
         requestReset(member.getEmail());
         String token = tokenFrom(fakeMailer.last());
 
-        for (String password : List.of("123456789", "ä".repeat(37))) {
-            setPassword(token, password)
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errorCode").value(103))
-                    .andExpect(jsonPath("$.fieldErrors.password").exists());
-        }
-        setPassword(token, "ä".repeat(36)).andExpect(status().isNoContent());
+        setPassword(token, "Lühike1!").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value(103))
+                .andExpect(jsonPath("$.fieldErrors.password").value("must be at least 10 characters"));
+        setPassword(token, "parool12!x").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.password").value("must contain an uppercase letter"));
+        setPassword(token, "Paroooool12!").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.password").value("must not have the same character more than 2 times in a row"));
+        setPassword(token, "Parool123!").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.password").value("must not have more than 2 letters or digits in sequence (abc, 123)"));
+        setPassword(token, "A!b" + "äö".repeat(17) + "ä").andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.password").value("must be at most 72 bytes"));
+
+        setPassword(token, "A!" + "äö".repeat(17) + "ä").andExpect(status().isNoContent());
     }
 
     @Test

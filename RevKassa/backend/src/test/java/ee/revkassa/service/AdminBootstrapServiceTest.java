@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AdminBootstrapServiceTest {
 
     private static final String EMAIL = "bootstrap-admin@example.org";
-    private static final String PASSWORD = "bootstrap-password-123";
+    private static final String PASSWORD = "Bootstrap-Pass-91x";
     private static final Pattern LOGGED_PIN = Pattern.compile("PIN \\(shown only once\\): (\\d{6})");
 
     @Autowired
@@ -136,6 +136,16 @@ class AdminBootstrapServiceTest {
                 .hasMessageContaining("at least 10")
                 .hasMessageNotContaining("123456789");
         assertThat(memberRepository.count()).isEqualTo(before);
+    }
+
+    @Test
+    void passwordBreakingRules_stopsStartupNamingTheRule() {
+        deactivateAllAdmins();
+
+        assertThatThrownBy(() -> service(EMAIL, "bootstrap-pass-91x", "Admin").createFirstAdminIfMissing())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must contain an uppercase letter")
+                .hasMessageNotContaining("bootstrap-pass-91x");
     }
 
     @Test

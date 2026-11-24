@@ -73,7 +73,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   SQL skriptides paroole pole. Esimene admin logib sisse parooliga ja registreerib tahvli (B38).
   Tehtud (`service/AdminBootstrapService`): keskkonnamuutujad `REVKASSA_BOOTSTRAP_ADMIN_EMAIL`,
   `_PASSWORD`, `_NAME` (nimi vaikimisi "Admin"). "Adminit pole" = pole ühtegi **aktiivset** ADMIN-i.
-  Seadeteta hoiatus logis; vigased seaded (pole e-post, parool < 10 märki, e-post kuulub juba liikmele)
+  Seadeteta hoiatus logis; vigased seaded (pole e-post, parool rikub paroolireegleid, e-post kuulub juba liikmele)
   peatavad käivitumise. Tase = esimene aktiivne. Parooli ei logita; PIN logitakse ainult see üks kord.
   Valmis, kui: test näitab, et see jookseb üks kord ja jäetakse vahele, kui admin on olemas.
 
@@ -107,23 +107,28 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   **eestikeelse** lihttekstiga kirja lingiga `<app-url>/set-password?token=…`.
   `POST /api/auth/password-reset` `{email}`: aktiivsel liikmel saadab `RESET` lingi; vastus
   **alati 204** (ei paljasta, kas e-post on olemas); IP kaupa max 5 päringut tunnis (429).
-  `POST /api/auth/set-password` `{token, password}`: parool ≥ 10 märki (400); tundmatu, aegunud,
+  `POST /api/auth/set-password` `{token, password}`: parool vastab paroolireeglitele (400); tundmatu, aegunud,
   kasutatud link või mitteaktiivne liige → `ForbiddenException` (üks kood); salvestab bcrypt
   räsi, märgib lingi kasutatuks. Ei logi sisse. Tokenit ega parooli ei logita.
   `POST /api/admin/members/{id}/invite` → uus `INVITE` (B17 kutsub sama teenust liikme loomisel).
   Tehtud: vigane link → 403 `121 PASSWORD_LINK_INVALID`; IP limiit → 429 `122` + `Retry-After`; lisaks
-  max 5 kirja tunnis sama aadressi kohta (vastus ikka 204, kirja ei saadeta). Parool ≥ 10 märki ja ≤ 72
-  baiti (bcrypt piir, `@MaxUtf8Bytes`). Kirja saatmise viga: kutse → 503 `123` ja midagi ei salvestata;
+  max 5 kirja tunnis sama aadressi kohta (vastus ikka 204, kirja ei saadeta). Paroolireeglid (PLAN.md):
+  `infrastructure/validation/PasswordRules` + `@StrongPassword`, väljaviga nimetab esimese rikutud reegli. Kirja saatmise viga: kutse → 503 `123` ja midagi ei salvestata;
   lähtestamine → ikka 204 (logis ERROR). Token ja räsi `TokenService`-ist (sama mis seadmeküpsisel).
   Kutse teenus: `MemberService.sendInvite` (B17 kasutab `PasswordLinkService.send`-i liikme loomisel).
   Valmis, kui: võlts-`Mailer`-iga testid katavad kirja sisu ja lingi, aegumise (`Clock`),
   ühekordsuse, vana lingi tühistamise uue saatmisel, tundmatu e-posti (204, kirja pole), lühikese
   parooli ja selle, et pärast määramist töötab `POST /api/auth/login`.
 
-- [ ] **B37 · Liige muudab oma parooli** (S) — pärast B04
+- [x] **B37 · Liige muudab oma parooli** (S) — pärast B04
   `PUT /api/me/password` `{currentPassword, newPassword}`: praegune peab klappima (vale →
-  `ForbiddenException`), uus ≥ 10 märki (400). Muud sessioonid jäävad kehtima (üks instants,
+  `ForbiddenException`), uus vastab paroolireeglitele (400). Muud sessioonid jäävad kehtima (üks instants,
   lihtsus). Parooli ei logita.
+  Tehtud: vastus 204; vale praegune → 403 `124 WRONG_CURRENT_PASSWORD` koos `remainingAttempts`-iga.
+  Lisaks: valed praegused paroolid on piiratud **liikme kaupa** sama kasvava lukustusega nagu
+  sisselogimine (5. viga → 429 `117`), et avatud sessiooniga ei saaks parooli ära arvata; see ei
+  blokeeri sisselogimist. Uus parool `@StrongPassword`. Töötab ka PIN-sessioonis (praegune
+  parool on niikuinii vaja). Lukustuse võti: `LockoutTypeEnum` (PIN_LOGIN, PASSWORD_LOGIN, PASSWORD_CHANGE).
   Valmis, kui: õnnestumine (vana parool ei tööta, uus töötab), vale praegune, lühike uus on testitud.
 
 - [x] **B38 · Admin: seadmete haldus** (S) — pärast B04, B35

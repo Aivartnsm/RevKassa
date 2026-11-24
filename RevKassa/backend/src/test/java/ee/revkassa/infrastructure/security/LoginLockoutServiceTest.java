@@ -151,6 +151,18 @@ class LoginLockoutServiceTest {
         assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forIp("7"))).doesNotThrowAnyException();
     }
 
+    @Test
+    void passwordChange_hasOwnCounterAndErrorCodes() {
+        RuntimeException wrong = lockoutService.registerFailure(LockoutKey.forPasswordChange(7L));
+        failTimes(LockoutKey.forPasswordChange(7L), 3);
+        RuntimeException locked = lockoutService.registerFailure(LockoutKey.forPasswordChange(7L));
+
+        assertThat(((ForbiddenException) wrong).getError()).isEqualTo(Error.WRONG_CURRENT_PASSWORD);
+        assertThat(((TooManyAttemptsException) locked).getError()).isEqualTo(Error.TOO_MANY_FAILED_LOGINS);
+        assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forIp("7"))).doesNotThrowAnyException();
+        assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forDevice(7L))).doesNotThrowAnyException();
+    }
+
     private void failTimes(LockoutKey key, int times) {
         for (int i = 0; i < times; i++) {
             lockoutService.registerFailure(key);

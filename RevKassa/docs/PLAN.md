@@ -92,7 +92,9 @@ Sisselogimine
   saadab lähtestamise lingi (kehtib **1 tund**); vastus on alati sama, olenemata sellest, kas
   e-post on olemas. Admin saab liikmele uue kutse saata. Token on juhuslik (32 baiti), andmebaasis
   ainult selle SHA-256 räsi (`password_token`), link on **ühekordne**: kasutamisel märgitakse
-  kasutatuks ja liikme teised kehtivad lingid tühistatakse. Parool vähemalt **10 märki**.
+  kasutatuks ja liikme teised kehtivad lingid tühistatakse. Parool: vähemalt **10 märki** (kuni 72 baiti — bcrypt piir), vähemalt üks **suurtäht**, **väiketäht** ja
+  **erimärk**; mitte rohkem kui kaks sama märki järjest (`paroooool`) ega kolme järjestikust tähte või numbrit
+  (`abc`, `123`, `cba`). Reeglid kehtivad uue parooli määramisel, mitte sisselogimisel.
   Parooli määramine ei logi sisse — liige logib pärast sisse tavaliselt.
 - Liige saab konto lehel parooli muuta (praegune + uus kaks korda).
 - Mitteaktiivne liige ei saa kummagi viisiga sisse logida ega parooli linki kasutada.

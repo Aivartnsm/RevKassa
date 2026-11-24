@@ -25,6 +25,7 @@ public enum Error {
     PASSWORD_LINK_INVALID("Password link is invalid or expired.", 121),
     TOO_MANY_PASSWORD_RESETS("Too many password reset requests. Try again later.", 122),
     EMAIL_NOT_SENT("Email could not be sent. Try again later.", 123),
+    WRONG_CURRENT_PASSWORD("Current password is wrong.", 124),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

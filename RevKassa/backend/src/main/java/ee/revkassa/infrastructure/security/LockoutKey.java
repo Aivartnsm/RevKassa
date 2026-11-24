@@ -1,16 +1,20 @@
 package ee.revkassa.infrastructure.security;
 
 /**
- * Whose wrong attempts are counted together: PIN attempts per trusted device, password attempts per client IP.
- * The two never share a counter.
+ * Whose wrong attempts are counted together: PIN attempts per trusted device, password logins per client IP,
+ * wrong current passwords (password change) per member. Different types never share a counter.
  */
-public record LockoutKey(LoginMethodEnum loginMethod, String id) {
+public record LockoutKey(LockoutTypeEnum type, String id) {
 
     public static LockoutKey forDevice(Long deviceId) {
-        return new LockoutKey(LoginMethodEnum.PIN, String.valueOf(deviceId));
+        return new LockoutKey(LockoutTypeEnum.PIN_LOGIN, String.valueOf(deviceId));
     }
 
     public static LockoutKey forIp(String clientIp) {
-        return new LockoutKey(LoginMethodEnum.PASSWORD, clientIp);
+        return new LockoutKey(LockoutTypeEnum.PASSWORD_LOGIN, clientIp);
+    }
+
+    public static LockoutKey forPasswordChange(Long memberId) {
+        return new LockoutKey(LockoutTypeEnum.PASSWORD_CHANGE, String.valueOf(memberId));
     }
 }

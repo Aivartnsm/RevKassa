@@ -1,6 +1,6 @@
 package ee.revkassa.controller.auth.dto;
 
-import ee.revkassa.infrastructure.validation.MaxUtf8Bytes;
+import ee.revkassa.infrastructure.validation.StrongPassword;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -19,8 +19,7 @@ public class SetPasswordRequestDto implements Serializable {
     private String token;
 
     @NotNull
-    @Size(min = 10, message = "must be at least 10 characters")
-    @MaxUtf8Bytes(72)
+    @StrongPassword
     @ToString.Exclude
     private String password;
 }

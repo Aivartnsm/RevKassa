@@ -1,6 +1,7 @@
 package ee.revkassa.service;
 
 import ee.revkassa.infrastructure.security.PinService;
+import ee.revkassa.infrastructure.validation.PasswordRules;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRepository;
 import ee.revkassa.persistence.member.MemberRoleEnum;
@@ -26,7 +27,6 @@ import java.time.OffsetDateTime;
 @Service
 public class AdminBootstrapService {
 
-    static final int MIN_PASSWORD_LENGTH = 10;
     private static final String DEFAULT_ADMIN_NAME = "Admin";
 
     private final MemberRepository memberRepository;
@@ -79,9 +79,9 @@ public class AdminBootstrapService {
         if (!adminEmail.contains("@")) {
             throw new IllegalStateException("REVKASSA_BOOTSTRAP_ADMIN_EMAIL is not an email address");
         }
-        if (adminPassword.length() < MIN_PASSWORD_LENGTH) {
-            throw new IllegalStateException("REVKASSA_BOOTSTRAP_ADMIN_PASSWORD must be at least " + MIN_PASSWORD_LENGTH + " characters");
-        }
+        PasswordRules.findViolation(adminPassword).ifPresent(violation -> {
+            throw new IllegalStateException("REVKASSA_BOOTSTRAP_ADMIN_PASSWORD " + violation);
+        });
         if (memberRepository.findByEmail(adminEmail).isPresent()) {
             throw new IllegalStateException("REVKASSA_BOOTSTRAP_ADMIN_EMAIL already belongs to a member who is not an active admin");
         }

@@ -28,7 +28,7 @@ ee/revkassa/
     ├── security/                       Spring Security, sessioonid, PIN/parool/seade
     ├── config/                         Clock bean, JSON seaded, @ConfigurationProperties
     ├── mail/                           Mailer liides, SMTP ja logiv implementatsioon
-    ├── validation/                     omad Bean Validation piirangud (nt @MaxUtf8Bytes paroolile)
+    ├── validation/                     omad Bean Validation piirangud (nt @StrongPassword + PasswordRules)
     └── ai/                             EventAssistant liides ja implementatsioonid
 ```
 

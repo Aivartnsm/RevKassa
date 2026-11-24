@@ -45,7 +45,7 @@ lingi kopeerida. SMTP-ga peavad olema seatud `REVKASSA_MAIL_FROM`, `REVKASSA_INV
 `REVKASSA_INVOICE_IBAN` (ja tootmises `REVKASSA_APP_URL`), muidu rakendus ei käivitu.
 
 Tühjas andmebaasis (pole aktiivset adminit) loob rakendus käivitumisel esimese admini, kui on seatud
-`REVKASSA_BOOTSTRAP_ADMIN_EMAIL`, `REVKASSA_BOOTSTRAP_ADMIN_PASSWORD` (≥ 10 märki) ja soovi korral `_NAME`;
+`REVKASSA_BOOTSTRAP_ADMIN_EMAIL`, `REVKASSA_BOOTSTRAP_ADMIN_PASSWORD` (paroolireeglid: nt `Bootstrap-Pass-91x`) ja soovi korral `_NAME`;
 selle PIN on logis üks kord ("First admin created"). Arenduse andmetes on adminid olemas, seal see ei käivitu.
 
 ## 3. Frontend
