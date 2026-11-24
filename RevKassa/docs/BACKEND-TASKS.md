@@ -31,8 +31,8 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   ISO-8601, raha täisarvuliste sentidena).
   Valmis, kui: `@WebMvcTest` tõestab iga erindi staatuse ja `ApiError` keha.
 
-- [ ] **B03 · Liikme entiteet ja PIN-i räsi** (M) — pärast B01
-  `Member` entiteet + repository (`persistence/member/`; `email` kohustuslik, `findByEmailIgnoreCase`). `PinService`
+- [x] **B03 · Liikme entiteet ja PIN-i räsi** (M) — pärast B01
+  `Member` entiteet + repository (`persistence/member/`; `email` kohustuslik). `PinService`
   (`infrastructure/security/`): HMAC-SHA256 võtmega `revkassa.pin-secret` (keskkonnamuutuja,
   ilma selleta rakendus ei käivitu), `generateUniquePin()` (6 numbrit, kokkupõrkel uus katse),
   `findByPin()`. PIN-e ei logita kunagi.
@@ -43,7 +43,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `POST /api/auth/pin` → liikme sessioon, aegumine **1 min** — **ainult usaldatud seadmest**
   (kehtiv `REVKASSA_DEVICE` küpsis, B35); ilma selleta 403 `DEVICE_NOT_TRUSTED` ja PIN-i ei
   kontrollita. Õnnestumisel uuenda `trusted_device.last_used_at`.
-  `POST /api/auth/login` (e-post tõstutundetult + bcrypt parool) → sessioon, aegumine **30 min**;
+  `POST /api/auth/login` (e-post tõstutundetult — `MemberRepository` otsing `lower(email)` järgi — + bcrypt parool) → sessioon, aegumine **30 min**;
   `ADMIN` rolliga saab ka admini õiguse (`ROLE_ADMIN`). Tundmatu e-post, vale parool ja
   määramata parool (`password_hash` null) → sama 403. Asendab varasema `POST /api/auth/admin`-i.
   `POST /api/auth/logout`. `/api/admin/**` nõuab parooliga sessiooni ja `ADMIN` rolli — admini
@@ -70,21 +70,18 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 - [ ] **B06 · Esimese admini loomine** (S) — pärast B03
   Käivitumisel, kui ühtegi adminit pole, loo üks seadetest `revkassa.bootstrap.admin-email`,
   `-password`, `-name` (keskkonnamuutujad) ja logi selle genereeritud PIN üks kord.
-  SQL skriptides paroole pole. Esimene admin logib sisse parooliga ja registreerib tahvli (B35).
+  SQL skriptides paroole pole. Esimene admin logib sisse parooliga ja registreerib tahvli (B38).
   Valmis, kui: test näitab, et see jookseb üks kord ja jäetakse vahele, kui admin on olemas.
 
-- [ ] **B35 · Usaldatud seadmed** (M) — pärast B03; B04 kasutab
-  `TrustedDevice` entiteet (`persistence/trusteddevice/`). `DeviceService`
-  (`infrastructure/security/`): token = 32 juhuslikku baiti (`SecureRandom`, base64url), andmebaasi
-  ainult SHA-256 hex; `findTrusted(request)` loeb küpsise `REVKASSA_DEVICE` ja tagastab
-  tühistamata seadme või tühja. `GET /api/auth/device` → `{trusted, name}` (sisselogimata).
-  `POST /api/admin/devices` `{name}` (parooliga admini sessioon) loob seadme ja paneb küpsise:
-  `HttpOnly`, `SameSite=Strict`, `Path=/`, `Max-Age` 400 päeva, `Secure` tootmises; iga PIN-iga
-  sisselogimine pikendab küpsist. `GET /api/admin/devices` (nimi, registreeritud, kes,
-  viimati kasutatud, tühistatud), `POST /api/admin/devices/{id}/revoke` (juba tühistatud →
-  `ForbiddenException`). Tokenit ei logita ega tagastata kehas.
-  Valmis, kui: testid katavad registreerimise (küpsis + räsi baasis, mitte token), `trusted`
-  õige/vale/tühistatud küpsisega, tühistamise ja selle, et tavaliige ei saa seadet registreerida.
+- [x] **B35 · Usaldatud seadmed: mehhanism** (M) — pärast B03; B04 kasutab
+  `TrustedDevice` entiteet + repository (`persistence/trusteddevice/`). `DeviceService`
+  (`infrastructure/security/`): `createToken()` = 32 juhuslikku baiti (`SecureRandom`, base64url),
+  andmebaasi ainult SHA-256 hex (`hash()`); `findTrusted(token)` tagastab tühistamata seadme või tühja;
+  `createDeviceCookie(token)` → `REVKASSA_DEVICE`: `HttpOnly`, `SameSite=Strict`, `Path=/`, `Max-Age`
+  400 päeva, `Secure` seadest `revkassa.secure-cookies` (tootmises `true`). `GET /api/auth/device` →
+  `{trusted, name}` (sisselogimata, `AuthController` / `AuthService`). Tokenit ei logita ega tagastata kehas.
+  Valmis, kui: testid katavad räsi, tokeni kuju, `trusted` õige/vale/tühistatud/puuduva küpsisega ja
+  küpsise atribuudid.
 
 - [ ] **B25 · E-kirjade saatmine** (S) — pärast B02
   Lisa `spring-boot-starter-mail`. `Mailer` liides (`infrastructure/mail/`): SMTP
@@ -114,6 +111,15 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `ForbiddenException`), uus ≥ 10 märki (400). Muud sessioonid jäävad kehtima (üks instants,
   lihtsus). Parooli ei logita.
   Valmis, kui: õnnestumine (vana parool ei tööta, uus töötab), vale praegune, lühike uus on testitud.
+
+- [ ] **B38 · Admin: seadmete haldus** (S) — pärast B04, B35
+  (Eraldatud B35-st: vajab B04 admini sessiooni, et teada `created_by` / `revoked_by` ja kaitsta `/api/admin/**`.)
+  `POST /api/admin/devices` `{name}` (parooliga admini sessioon) loob seadme (`DeviceService.createToken()`,
+  andmebaasi räsi) ja paneb **sellele** brauserile küpsise `createDeviceCookie()` kaudu.
+  `GET /api/admin/devices` (nimi, registreeritud, kes, viimati kasutatud, tühistatud),
+  `POST /api/admin/devices/{id}/revoke` (juba tühistatud → `ForbiddenException`).
+  Valmis, kui: testid katavad registreerimise (küpsis + räsi baasis, mitte token), nimekirja,
+  tühistamise, topelt-tühistamise ja selle, et tavaliige ega PIN-sessioon ei saa seadet registreerida.
 
 ## Verstapost 2 — Tooted ja ladu
 

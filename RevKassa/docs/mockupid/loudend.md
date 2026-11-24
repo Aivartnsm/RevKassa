@@ -65,7 +65,7 @@ Kõigil sisselogitud ekraanidel (`isApp`) on päis nime ja saldoga ning tabiriba
 | Ekraan | Lipp (arvuti) | Lipp (telefon) | Vaade, route | Task | API kutsed |
 |---|---|---|---|---|---|
 | Sisselogimine (sama mis liikmel, e-post + parool) | `needsLogin` | `needsLogin` | `LoginView.vue`, `/` | F06 | `POST /api/auth/login` |
-| Seadmed | `isDevices` | — (registreeritakse tahvlis, laua paigutus) | `AdminDevicesView.vue`, `/admin/devices` | F31 | `GET`/`POST /api/admin/devices`, `POST …/{id}/revoke` |
+| Seadmed | `isDevices` | — (registreeritakse tahvlis, laua paigutus) | `AdminDevicesView.vue`, `/admin/devices` | F31 (B38) | `GET`/`POST /api/admin/devices`, `POST …/{id}/revoke` |
 | Ülevaade | `isDashboard` | `isOverview` | `AdminDashboardView.vue`, `/admin` | F17 | `GET /api/admin/dashboard` |
 | Tooted (+ muutmine) | `isProducts` (+ `showEditProduct`) | `isStock` (+ `showNewProduct`), detail `isProduct` ("Muuda toodet") | `AdminProductsView.vue`, `/admin/products` | F07 | `GET`/`POST`/`PUT /api/admin/products` |
 | Tarne | `isDelivery` | `isProduct` (−/+ ja kiirnupud) | `AdminDeliveryView.vue`, `/admin/delivery` | F08 | `POST /api/admin/stock/deliveries` |

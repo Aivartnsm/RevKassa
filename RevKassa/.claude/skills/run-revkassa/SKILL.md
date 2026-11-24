@@ -31,9 +31,11 @@ Skeem tuleb failidest `docs/database/1_reset_database.sql`, `2_create.sql`, `3_i
 ```bash
 cd backend
 JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew test        # testid (vajavad andmebaasi)
-JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew bootRun     # :8080
+REVKASSA_PIN_SECRET=dev-pin-secret JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 ./gradlew bootRun     # :8080
 ```
-Käivita `bootRun` taustal ja oota, kuni `curl -s localhost:8080/actuator/health` tagastab
+Ilma `REVKASSA_PIN_SECRET`-ita rakendus ei käivitu (testid saavad selle failist
+`src/test/resources/config/application.properties`; IntelliJ Run Configuration'isse lisa
+`REVKASSA_PIN_SECRET=dev-pin-secret`). Käivita `bootRun` taustal ja oota, kuni `curl -s localhost:8080/actuator/health` tagastab
 `{"status":"UP"}`. Swagger UI: `http://localhost:8080/swagger-ui/index.html`. Peata see, kui oled valmis.
 
 ## 3. Frontend

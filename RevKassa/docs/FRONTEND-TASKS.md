@@ -85,7 +85,7 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   e-post → alati "Kui see e-post on meil olemas, saatsime sellele lingi."
   Valmis, kui: töötab 390px juures ja logiva saatjaga (link võetakse backendi logist).
 
-- [ ] **F31 · Admin: seadmed** (S) — vajab B35
+- [ ] **F31 · Admin: seadmed** (S) — vajab B38
   Admini menüüpunkt "Seadmed": nimekiri (nimi, registreeritud, viimati kasutatud, Tühistatud),
   "Tühista" kinnitusega; nupp "Registreeri see seade baaritahvliks" (nimi) — näidatakse, kui see
   seade pole veel usaldatud, selgitusega, et pärast seda saab siin PIN-iga sisse logida.

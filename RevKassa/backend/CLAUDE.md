@@ -42,6 +42,7 @@ Spring Boot 4, Java 21, Gradle. Pakett `ee.revkassa`. Failide paigutus: [docs/ba
 - Laoseis muutub ainult `StockService.move(...)` kaudu: kirjutab `stock_movement` rea **ja** uuendab `product.stock_qty`.
 - Pearaamatu ridu (`account_entry`, `stock_movement`) ei muudeta ega kustutata; parandus on uus rida.
 - PIN-i ei salvestata ega logita kunagi lihtsalt — ainult `pin_hmac`.
+- PIN-iga sisselogimine ainult usaldatud seadmes (`trusted_device`); admini õigused ainult parooliga sessioonis. Seadme- ja parooli lingi tokeneid hoitakse ainult SHA-256 räsina ega logita kunagi.
 - AI abiline saab ainult ürituse andmed, mitte liikmete nimesid, e-posti ega saldosid.
 
 ## Swagger
