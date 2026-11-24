@@ -1,4 +1,4 @@
-package ee.revkassa.persistence.member;
+package ee.revkassa.persistence.membershiplevel;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;

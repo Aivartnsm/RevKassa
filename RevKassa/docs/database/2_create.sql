@@ -17,7 +17,7 @@ CREATE TABLE membership_level (
 -- Table: member
 CREATE TABLE member (
     id             bigint      GENERATED ALWAYS AS IDENTITY,
-    email          text,
+    email          text        NOT NULL,
     display_name   text        NOT NULL,
     pin_hmac       text        NOT NULL,
     password_hash  text,
@@ -30,8 +30,7 @@ CREATE TABLE member (
     created_at     timestamptz NOT NULL DEFAULT now(),
     version        bigint      NOT NULL DEFAULT 0,
     CONSTRAINT member_pk PRIMARY KEY (id),
-    CONSTRAINT ck_member_role CHECK (role IN ('MEMBER', 'ADMIN')),
-    CONSTRAINT ck_member_admin_credentials CHECK (role <> 'ADMIN' OR (email IS NOT NULL AND password_hash IS NOT NULL))
+    CONSTRAINT ck_member_role CHECK (role IN ('MEMBER', 'ADMIN'))
 );
 
 -- Table: product
@@ -152,6 +151,33 @@ CREATE TABLE invoice (
     CONSTRAINT invoice_pk PRIMARY KEY (id),
     CONSTRAINT ck_invoice_amount_cents CHECK (amount_cents > 0),
     CONSTRAINT ck_invoice_status CHECK (status IN ('SENT', 'FAILED'))
+);
+
+-- Table: trusted_device (admini registreeritud seade, kus PIN-iga sisselogimine on lubatud)
+CREATE TABLE trusted_device (
+    id           bigint      GENERATED ALWAYS AS IDENTITY,
+    name         text        NOT NULL,
+    token_hash   text        NOT NULL,
+    created_by   bigint      NOT NULL,
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    last_used_at timestamptz,
+    revoked_by   bigint,
+    revoked_at   timestamptz,
+    CONSTRAINT trusted_device_pk PRIMARY KEY (id)
+);
+
+-- Table: password_token (ühekordne parooli määramise link: kutse või lähtestamine)
+CREATE TABLE password_token (
+    id         bigint      GENERATED ALWAYS AS IDENTITY,
+    member_id  bigint      NOT NULL,
+    token_hash text        NOT NULL,
+    purpose    text        NOT NULL,
+    expires_at timestamptz NOT NULL,
+    used_at    timestamptz,
+    created_by bigint,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT password_token_pk PRIMARY KEY (id),
+    CONSTRAINT ck_password_token_purpose CHECK (purpose IN ('INVITE', 'RESET'))
 );
 
 -- Table: event
@@ -278,6 +304,12 @@ ALTER TABLE membership_charge ADD CONSTRAINT fk_membership_charge_waived_by FORE
 ALTER TABLE invoice ADD CONSTRAINT fk_invoice_member_id FOREIGN KEY (member_id) REFERENCES member (id);
 ALTER TABLE invoice ADD CONSTRAINT fk_invoice_sent_by FOREIGN KEY (sent_by) REFERENCES member (id);
 
+ALTER TABLE trusted_device ADD CONSTRAINT fk_trusted_device_created_by FOREIGN KEY (created_by) REFERENCES member (id);
+ALTER TABLE trusted_device ADD CONSTRAINT fk_trusted_device_revoked_by FOREIGN KEY (revoked_by) REFERENCES member (id);
+
+ALTER TABLE password_token ADD CONSTRAINT fk_password_token_member_id FOREIGN KEY (member_id) REFERENCES member (id);
+ALTER TABLE password_token ADD CONSTRAINT fk_password_token_created_by FOREIGN KEY (created_by) REFERENCES member (id);
+
 ALTER TABLE event ADD CONSTRAINT fk_event_created_by FOREIGN KEY (created_by) REFERENCES member (id);
 
 ALTER TABLE event_level_fee ADD CONSTRAINT fk_event_level_fee_event_id FOREIGN KEY (event_id) REFERENCES event (id) ON DELETE CASCADE;
@@ -304,7 +336,7 @@ ALTER TABLE stock_movement ADD CONSTRAINT fk_stock_movement_purchase_id FOREIGN 
 ALTER TABLE stock_movement ADD CONSTRAINT fk_stock_movement_created_by FOREIGN KEY (created_by) REFERENCES member (id);
 
 -- indexes
-CREATE UNIQUE INDEX ux_member_email ON member (lower(email)) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX ux_member_email ON member (lower(email));
 CREATE UNIQUE INDEX ux_member_pin_hmac ON member (pin_hmac);
 CREATE INDEX ix_purchase_member_id_created_at ON purchase (member_id, created_at DESC);
 CREATE INDEX ix_payment_status_reported_at ON payment (status, reported_at);
@@ -317,6 +349,9 @@ CREATE UNIQUE INDEX ux_membership_charge_member_id_month ON membership_charge (m
 CREATE INDEX ix_membership_charge_month ON membership_charge (month);
 CREATE UNIQUE INDEX ux_invoice_number ON invoice (number);
 CREATE INDEX ix_invoice_member_id_created_at ON invoice (member_id, created_at DESC);
+CREATE UNIQUE INDEX ux_trusted_device_token_hash ON trusted_device (token_hash);
+CREATE UNIQUE INDEX ux_password_token_token_hash ON password_token (token_hash);
+CREATE INDEX ix_password_token_member_id ON password_token (member_id);
 CREATE UNIQUE INDEX ux_membership_level_name ON membership_level (lower(name));
 CREATE INDEX ix_event_starts_at ON event (starts_at DESC);
 CREATE UNIQUE INDEX ux_event_participant_event_id_member_id ON event_participant (event_id, member_id);

@@ -17,8 +17,9 @@ Konventsioonid
 - Ajatemplid: `timestamptz`, vaikimisi `now()`.
 - Enumid on `text` koos `CHECK` piiranguga (Javas `@Enumerated(EnumType.STRING)`).
 - Pearaamatud (`account_entry`, `stock_movement`) on ainult lisatavad: ridu ei muudeta ega kustutata.
-- 16 tabelit: 8 põhitabelit, `membership_fee`, `membership_charge`, `invoice` ning ürituste jaoks
-  `membership_level`, `event`, `event_level_fee`, `event_participant`, `event_budget_line`.
+- 18 tabelit: 8 põhitabelit, `membership_fee`, `membership_charge`, `invoice`, sisselogimise jaoks
+  `trusted_device` ja `password_token` ning ürituste jaoks `membership_level`, `event`,
+  `event_level_fee`, `event_participant`, `event_budget_line`.
   Nimed on inglise keeles, kuigi UI on eesti keeles.
 
 ```mermaid
@@ -44,6 +45,8 @@ erDiagram
     member ||--o{ event_participant : attends
     event_participant ||--o{ account_entry : "EVENT_FEE rows"
     event ||--o{ event_budget_line : budget
+    member ||--o{ trusted_device : "registered by"
+    member ||--o{ password_token : "set-password links"
 ```
 `membership_fee` hoiab taseme tasu ajas; tasurida kopeerib taseme ja summa.
 
@@ -53,10 +56,10 @@ erDiagram
 | veerg | tüüp | märkused |
 |---|---|---|
 | id | bigint PK | |
-| email | text | unikaalne `lower(email)` järgi; `ADMIN`-il kohustuslik; arvete jaoks |
+| email | text not null | unikaalne `lower(email)` järgi; parooliga sisselogimine, parooli lingid, arved |
 | display_name | text not null | näidatakse pärast sisselogimist |
 | pin_hmac | text not null | unikaalne; HMAC-SHA256(serveri võti, 6-kohaline PIN), hex |
-| password_hash | text | bcrypt; ainult admini sisselogimiseks, `ADMIN`-il kohustuslik |
+| password_hash | text | bcrypt; null = liige pole parooli veel lingi kaudu määranud (sisse saab ainult PIN-iga tahvlis) |
 | role | text not null | `MEMBER` \| `ADMIN` |
 | balance_cents | bigint not null default 0 | vahemälu `sum(account_entry.amount_cents)`; negatiivne = võlg |
 | active | boolean not null default true | mitteaktiivne liige ei saa sisse logida |
@@ -65,6 +68,34 @@ erDiagram
 | pin_changed_at | timestamptz | |
 | created_at | timestamptz not null | |
 | version | bigint not null default 0 | optimistlik lukk |
+
+### trusted_device
+| veerg | tüüp | märkused |
+|---|---|---|
+| id | bigint PK | |
+| name | text not null | nt "Baaritahvel" |
+| token_hash | text not null | unikaalne; SHA-256(küpsise `REVKASSA_DEVICE` token), hex. Tokenit ennast ei salvestata |
+| created_by | bigint not null FK member | admin, kes seadme registreeris |
+| created_at | timestamptz not null | |
+| last_used_at | timestamptz | viimane PIN-iga sisselogimine selles seadmes |
+| revoked_by | bigint FK member | admin |
+| revoked_at | timestamptz | seatud = seade pole enam usaldatud |
+
+Ainult usaldatud seadmes (kehtiv, tühistamata küpsis) saab PIN-iga sisse logida. Ridu ei kustutata.
+
+### password_token
+| veerg | tüüp | märkused |
+|---|---|---|
+| id | bigint PK | |
+| member_id | bigint not null FK member | |
+| token_hash | text not null | unikaalne; SHA-256(lingis olev token), hex |
+| purpose | text not null | `INVITE` (konto loomine, 7 päeva) \| `RESET` ("Unustasid parooli?", 1 tund) |
+| expires_at | timestamptz not null | |
+| used_at | timestamptz | seatakse kasutamisel või kui sama liikme uuem link kasutatakse / saadetakse |
+| created_by | bigint FK member | admin; null = liige küsis ise (`RESET`) |
+| created_at | timestamptz not null | |
+
+Link kehtib, kui `used_at is null` ja `expires_at > now()`. Ühekordne.
 
 ### product
 | veerg | tüüp | märkused |
@@ -271,7 +302,9 @@ praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
 | created_at, updated_at | timestamptz not null | |
 
 ## Indeksid
-- `member (lower(email))` unikaalne (kus email ei ole null)
+- `member (lower(email))` unikaalne — parooliga sisselogimise otsing
+- `trusted_device (token_hash)` unikaalne
+- `password_token (token_hash)` unikaalne; `password_token (member_id)`
 - `member (pin_hmac)` unikaalne — sisselogimise otsing
 - `purchase (member_id, created_at desc)`
 - `payment (status, reported_at)` — admini "ootel" nimekiri
@@ -287,7 +320,6 @@ praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
 - `event_budget_line (event_id, category)`
 
 ## Piirangud
-- `check (role <> 'ADMIN' or (email is not null and password_hash is not null))`
 - `balance_cents` piirangut pole: positiivne = ettemaks, negatiivne = võlg.
 
 ## Invariandid (kontrollitakse testides)

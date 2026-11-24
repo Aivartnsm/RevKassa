@@ -16,7 +16,8 @@ class DatabaseSchemaTests {
 	private static final List<String> TABLES = List.of(
 			"member", "product", "purchase", "purchase_line", "payment", "member_favourite",
 			"account_entry", "stock_movement", "membership_fee", "membership_charge", "invoice",
-			"membership_level", "event", "event_level_fee", "event_participant", "event_budget_line");
+			"membership_level", "event", "event_level_fee", "event_participant", "event_budget_line",
+			"trusted_device", "password_token");
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;

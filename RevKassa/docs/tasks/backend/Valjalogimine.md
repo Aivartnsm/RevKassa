@@ -16,9 +16,10 @@ küpsisest. Päring nõuab CSRF tokenit (`X-XSRF-TOKEN` päis küpsise `XSRF-TOK
 
 - Serveri sessioon invalideeritakse (`HttpSession.invalidate()` / Spring Security `logout()`).
 - Sessiooniküpsis kustutatakse (`Set-Cookie` aegunud küpsisega).
-- Lõpeb kogu sessioon — nii liikme (PIN) kui admini sessioon, sest brauseril on üks sessioon.
+- Lõpeb kogu sessioon — nii PIN- kui parooliga sessioon, sest brauseril on üks sessioon.
+- Seadmeküpsist `REVKASSA_DEVICE` **ei** kustutata: tahvel jääb usaldatud seadmeks.
 - Teenus on idempotentne: ka ilma sessioonita või aegunud sessiooniga päring → 204.
-- Pärast väljalogimist naaseb UI PIN-i klahvistikule (`/`) või admini sisselogimisele (`/admin/login`).
+- Pärast väljalogimist naaseb UI avalehele `/` (usaldatud seadmes PIN-i klahvistik, mujal parooli vorm).
 
 ## Eesmärk
 
@@ -42,13 +43,14 @@ servlet-sessioon). Väljalogimine ei muuda `member` rida.
 Puuduv või aegunud sessioon **ei ole** viga (204).
 
 **Lahknevus lõuendiga:** "Admin — arvuti" (`Admin.dc.html`) päises nuppu "Logi välja" pole, telefoni
-joonisel on. Endpoint on mõlemale sama; nupu lisamine on frontendi (F06 / admini paigutus) küsimus.
+joonisel on. Endpoint on mõlemale sama; nupu lisamine on frontendi (F03 / admini paigutus) küsimus.
 
 ## Vastuvõtu kriteeriumid
 
 - [ ] Endpoint `POST /api/auth/logout` on olemas, ei nõua sisselogimist, nõuab CSRF tokenit.
 - [ ] PIN-sessiooniga päring → 204; sama küpsisega järgmine `GET /api/me` → 401.
-- [ ] Admini sessiooniga päring → 204; sama küpsisega järgmine `/api/admin/**` päring → 401.
+- [ ] Admini parooliga sessiooniga päring → 204; sama küpsisega järgmine `/api/admin/**` päring → 401.
+- [ ] Seadmeküpsis jääb alles: pärast väljalogimist töötab samas seadmes jälle PIN.
 - [ ] Vastus kustutab sessiooniküpsise.
 - [ ] Ilma sessioonita või aegunud sessiooniga päring → 204.
 - [ ] Ilma CSRF tokenita → 403, sessioon jääb kehtima.

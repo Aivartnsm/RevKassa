@@ -16,7 +16,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 ## Verstapost 1 — Alus
 
 - [x] **B01 · Andmebaasi skriptid ja sõltuvused** (M)
-  `docs/database/1_reset_database.sql`, `2_create.sql` (kõik 16 tabelit, piirangud, FK-d, indeksid täpselt
+  `docs/database/1_reset_database.sql`, `2_create.sql` (kõik tabelid — algselt 16, nüüd 18 koos `trusted_device` ja `password_token`, piirangud, FK-d, indeksid täpselt
   nagu DB-MODEL.md-s, k.a 5 liikmetaset) ja `3_import.sql` (näidisliikmed, -tooted, -tarned).
   `build.gradle`-sse MapStruct (+ `lombok-mapstruct-binding`) ja springdoc-openapi (Swagger UI).
   Valmis, kui: skriptid jooksevad tühjale andmebaasile vigadeta, rakendus käivitub
@@ -32,37 +32,88 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: `@WebMvcTest` tõestab iga erindi staatuse ja `ApiError` keha.
 
 - [ ] **B03 · Liikme entiteet ja PIN-i räsi** (M) — pärast B01
-  `Member` entiteet + repository (`persistence/member/`). `PinService`
+  `Member` entiteet + repository (`persistence/member/`; `email` kohustuslik, `findByEmailIgnoreCase`). `PinService`
   (`infrastructure/security/`): HMAC-SHA256 võtmega `revkassa.pin-secret` (keskkonnamuutuja,
   ilma selleta rakendus ei käivitu), `generateUniquePin()` (6 numbrit, kokkupõrkel uus katse),
   `findByPin()`. PIN-e ei logita kunagi.
   Valmis, kui: testid katavad räsi, unikaalsuse uue katse ja otsingu.
 
-- [ ] **B04 · Turvalisus ja sisselogimine** (L) — pärast B02, B03
+- [ ] **B04 · Turvalisus ja sisselogimine** (L) — pärast B02, B03, B35
   Spring Security sessiooniküpsise + CSRF-iga (küpsise token SPA jaoks, `XSRF-TOKEN`).
-  `POST /api/auth/pin` → liikme sessioon, aegumine **1 min**;
-  `POST /api/auth/admin` (e-post + bcrypt parool) → admini sessioon, aegumine **30 min**;
-  `POST /api/auth/logout`. `/api/admin/**` nõuab admini sisselogimise sessiooni — admini
-  PIN-sessioon on ikkagi ainult liikme sessioon. `GET /api/me` (nimi, roll, saldo).
-  Valmis, kui: MockMvc testid katavad mõlemad sisselogimised, valed andmed, sessiooni
-  aegumised, PIN-sessiooni keelu `/api/admin/**` all ja mitteaktiivse liikme keelu.
+  `POST /api/auth/pin` → liikme sessioon, aegumine **1 min** — **ainult usaldatud seadmest**
+  (kehtiv `REVKASSA_DEVICE` küpsis, B35); ilma selleta 403 `DEVICE_NOT_TRUSTED` ja PIN-i ei
+  kontrollita. Õnnestumisel uuenda `trusted_device.last_used_at`.
+  `POST /api/auth/login` (e-post tõstutundetult + bcrypt parool) → sessioon, aegumine **30 min**;
+  `ADMIN` rolliga saab ka admini õiguse (`ROLE_ADMIN`). Tundmatu e-post, vale parool ja
+  määramata parool (`password_hash` null) → sama 403. Asendab varasema `POST /api/auth/admin`-i.
+  `POST /api/auth/logout`. `/api/admin/**` nõuab parooliga sessiooni ja `ADMIN` rolli — admini
+  PIN-sessioon on ikkagi ainult liikme sessioon. `GET /api/me` (nimi, roll, saldo, `loginMethod`
+  `PIN`/`PASSWORD`).
+  Valmis, kui: MockMvc testid katavad mõlemad sisselogimised, PIN-i ilma seadmeküpsiseta /
+  tühistatud seadmega, valed andmed, määramata parooli, sessiooni aegumised, PIN-sessiooni keelu
+  `/api/admin/**` all, tavaliikme parooliga sessiooni keelu `/api/admin/**` all ja
+  mitteaktiivse liikme keelu.
 
-- [ ] **B05 · PIN-i jõurünnaku lukustus** (S) — pärast B04
-  Kliendi IP kaupa: pärast 5 valet PIN-i lukusta 1 minutiks; pärast seda lukustab iga järgmine
-  vale PIN uuesti, tasemed 5 min → 10 min → 30 min → 1 h → 1 päev (edasi 1 päev). Õnnestumisel
-  nulli loendur ja tase. Lukustuse ajal ei kontrollita PIN-i üldse. Mälus hoidmine sobib (üks
-  instants). Logi ebaõnnestumised ja lukustused ilma PIN-ita. Vale PIN enne lukustust → 403 `remainingAttempts`-iga. Lukustatud päring → 429, `ApiError`
+- [ ] **B05 · Jõurünnaku lukustus** (S) — pärast B04
+  PIN: **seadme kaupa** (`trusted_device.id`). Parool: **kliendi IP kaupa**, eraldi loendur.
+  Mõlemal: pärast 5 valet katset lukusta 1 minutiks; pärast seda lukustab iga järgmine
+  vale katse uuesti, tasemed 5 min → 10 min → 30 min → 1 h → 1 päev (edasi 1 päev). Õnnestumisel
+  nulli loendur ja tase. Lukustuse ajal ei kontrollita PIN-i/parooli üldse. Mälus hoidmine sobib
+  (üks instants). Logi ebaõnnestumised ja lukustused ilma PIN-i/paroolita. Vale katse enne
+  lukustust → 403 `remainingAttempts`-iga. Lukustatud päring → 429, `ApiError`
   oma `errorCode`-iga ja `nextLockoutSeconds`-iga (järgmise lukustuse pikkus) ning `Retry-After` päis
   (sekundid), mille järgi UI näitab loendurit.
   Valmis, kui: fikseeritud `Clock`-iga testid läbivad esimese lukustuse 5. vea järel, iga
-  taseme pikkuse, 1 päeva lae, lukustuse ajal tehtud katse (ei pikenda ega kontrolli PIN-i) ja
-  nullimise õnnestumisel.
+  taseme pikkuse, 1 päeva lae, lukustuse ajal tehtud katse (ei pikenda ega kontrolli) ja
+  nullimise õnnestumisel; teise seadme / teise IP katsed ei ole mõjutatud.
 
 - [ ] **B06 · Esimese admini loomine** (S) — pärast B03
   Käivitumisel, kui ühtegi adminit pole, loo üks seadetest `revkassa.bootstrap.admin-email`,
   `-password`, `-name` (keskkonnamuutujad) ja logi selle genereeritud PIN üks kord.
-  SQL skriptides paroole pole.
+  SQL skriptides paroole pole. Esimene admin logib sisse parooliga ja registreerib tahvli (B35).
   Valmis, kui: test näitab, et see jookseb üks kord ja jäetakse vahele, kui admin on olemas.
+
+- [ ] **B35 · Usaldatud seadmed** (M) — pärast B03; B04 kasutab
+  `TrustedDevice` entiteet (`persistence/trusteddevice/`). `DeviceService`
+  (`infrastructure/security/`): token = 32 juhuslikku baiti (`SecureRandom`, base64url), andmebaasi
+  ainult SHA-256 hex; `findTrusted(request)` loeb küpsise `REVKASSA_DEVICE` ja tagastab
+  tühistamata seadme või tühja. `GET /api/auth/device` → `{trusted, name}` (sisselogimata).
+  `POST /api/admin/devices` `{name}` (parooliga admini sessioon) loob seadme ja paneb küpsise:
+  `HttpOnly`, `SameSite=Strict`, `Path=/`, `Max-Age` 400 päeva, `Secure` tootmises; iga PIN-iga
+  sisselogimine pikendab küpsist. `GET /api/admin/devices` (nimi, registreeritud, kes,
+  viimati kasutatud, tühistatud), `POST /api/admin/devices/{id}/revoke` (juba tühistatud →
+  `ForbiddenException`). Tokenit ei logita ega tagastata kehas.
+  Valmis, kui: testid katavad registreerimise (küpsis + räsi baasis, mitte token), `trusted`
+  õige/vale/tühistatud küpsisega, tühistamise ja selle, et tavaliige ei saa seadet registreerida.
+
+- [ ] **B25 · E-kirjade saatmine** (S) — pärast B02
+  Lisa `spring-boot-starter-mail`. `Mailer` liides (`infrastructure/mail/`): SMTP
+  implementatsioon, kui `spring.mail.host` on seatud, muidu logiv (arendus).
+  `@ConfigurationProperties` `revkassa.mail.*` (from, reply-to), `revkassa.app-url` (linkide
+  alus, arenduses `http://localhost:5173`) ja `revkassa.invoice.*` (org-name, iban,
+  due-days = 14), valideeritakse käivitumisel, kui SMTP on sees.
+  Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
+
+- [ ] **B36 · Parooli lingid** (M) — pärast B04, B25
+  `PasswordToken` entiteet (`persistence/passwordtoken/`). `PasswordLinkService.send(member,
+  purpose, createdBy)`: tühistab liikme kehtivad lingid (`used_at = now`), loob tokeni
+  (32 baiti, andmebaasi SHA-256), kehtivus `INVITE` 7 päeva / `RESET` 1 tund, saadab
+  **eestikeelse** lihttekstiga kirja lingiga `<app-url>/set-password?token=…`.
+  `POST /api/auth/password-reset` `{email}`: aktiivsel liikmel saadab `RESET` lingi; vastus
+  **alati 204** (ei paljasta, kas e-post on olemas); IP kaupa max 5 päringut tunnis (429).
+  `POST /api/auth/set-password` `{token, password}`: parool ≥ 10 märki (400); tundmatu, aegunud,
+  kasutatud link või mitteaktiivne liige → `ForbiddenException` (üks kood); salvestab bcrypt
+  räsi, märgib lingi kasutatuks. Ei logi sisse. Tokenit ega parooli ei logita.
+  `POST /api/admin/members/{id}/invite` → uus `INVITE` (B17 kutsub sama teenust liikme loomisel).
+  Valmis, kui: võlts-`Mailer`-iga testid katavad kirja sisu ja lingi, aegumise (`Clock`),
+  ühekordsuse, vana lingi tühistamise uue saatmisel, tundmatu e-posti (204, kirja pole), lühikese
+  parooli ja selle, et pärast määramist töötab `POST /api/auth/login`.
+
+- [ ] **B37 · Liige muudab oma parooli** (S) — pärast B04
+  `PUT /api/me/password` `{currentPassword, newPassword}`: praegune peab klappima (vale →
+  `ForbiddenException`), uus ≥ 10 märki (400). Muud sessioonid jäävad kehtima (üks instants,
+  lihtsus). Parooli ei logita.
+  Valmis, kui: õnnestumine (vana parool ei tööta, uus töötab), vale praegune, lühike uus on testitud.
 
 ## Verstapost 2 — Tooted ja ladu
 
@@ -130,19 +181,20 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta, ka admini sisestatud makse puhul.
 
 - [ ] **B17 · Liikmete haldus** (M) — pärast B04, B10
-  `GET/POST/PUT /api/admin/members` (nimi, e-post, roll, aktiivne, tasust vabastus; adminil
-  e-post + parool kohustuslik, liikmel e-post valikuline).
-  Loomine ja `POST /api/admin/members/{id}/pin` tagastavad uue PIN-i vastuses **üks kord**.
+  `GET/POST/PUT /api/admin/members` (nimi, e-post (kohustuslik, unikaalne tõstutundetult —
+  võetud → `ForbiddenException`), roll, aktiivne, tasust vabastus; parooli admin ei määra).
+  Loomine saadab liikmele kutselingi (B36) ja nimekiri näitab `passwordSet` (kas parool on
+  määratud). Loomine ja `POST /api/admin/members/{id}/pin` tagastavad uue PIN-i vastuses **üks kord**.
   `POST /api/admin/members/{id}/adjustments` (nullist erinev summa, kohustuslik märkus).
   `GET /api/admin/members/{id}/purchases?page=` (pärast B12): liikme ostud uuemad ees — aeg,
   read ("2 × Saku Originaal"), summa, staatus; admin võtab ostu tagasi olemasoleva
   `POST /api/purchases/{id}/undo` kaudu.
-  Valmis, kui: admini reeglid, PIN-i lähtestamine (vana PIN kehtetu), parandused ja ostude
+  Valmis, kui: e-posti unikaalsus, kutse saatmine loomisel, PIN-i lähtestamine (vana PIN kehtetu), parandused ja ostude
   nimekiri (k.a tagasivõetud ost) on testitud.
 
 - [ ] **B34 · Liige muudab oma PIN-i** (S) — pärast B05
   `PUT /api/me/pin` `{currentPin, newPin}`: praegune PIN peab klappima (vale → `ForbiddenException`
-  ja loeb B05 lukustuse loendurisse), uus täpselt 6 numbrit (400), eelmisest erinev ja unikaalne
+  ja loeb B05 lukustuse loendurisse — seadme kaupa PIN-sessioonis, IP kaupa parooliga sessioonis), uus täpselt 6 numbrit (400), eelmisest erinev ja unikaalne
   (võetud → `ForbiddenException`, teade ei ütle, kellele see kuulub). Uuendab `pin_hmac` ja
   `pin_changed_at`; PIN-e ei logita.
   Valmis, kui: õnnestumine (vana PIN kehtetu, uus töötab), vale praegune PIN, vale formaat, sama
@@ -187,21 +239,16 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `MEMBERSHIP_FEE_WAIVER` rida summaga +summa. Teist korda → `ForbiddenException`.
   Valmis, kui: tühistamine, topelt-tühistamine ja invariant on testitud.
 
-- [ ] **B25 · E-kirjade saatmine** (S) — pärast B02
-  Lisa `spring-boot-starter-mail`. `Mailer` liides (`infrastructure/mail/`): SMTP
-  implementatsioon, kui `spring.mail.host` on seatud, muidu logiv (arendus).
-  `@ConfigurationProperties` `revkassa.invoice.*` (org-name, iban, from, reply-to,
-  due-days = 14), valideeritakse käivitumisel, kui SMTP on sees.
-  Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
+(B25 · E-kirjade saatmine on verstapostis 1, sest parooli lingid vajavad seda.)
 
 - [ ] **B26 · Arved** (M) — pärast B14, B17, B25
   `Invoice` entiteet. `GET /api/admin/invoices/candidates`: liikmed saldoga < 0, e-post,
-  viimase arve kuupäev, `selectable` (e-post olemas). `GET /api/admin/invoices/preview?memberId=`.
+  viimase arve kuupäev. `GET /api/admin/invoices/preview?memberId=`.
   `POST /api/admin/invoices` `{memberIds}`: liikme kohta oma transaktsioon: järgmine number
   `YYYY-NNNN`, summa = −saldo, maksetähtaeg, lihttekstiga **eestikeelne** sisu (võlg, read
   eelmisest arvest või viimased 60 päeva, IBAN, selgitus "Arve <number>"; `et-EE` raha ja
   kuupäevad, eestikeelsed kuunimed), saada, salvesta `SENT` või `FAILED` + viga;
-  tagastab tulemuse liikme kaupa. Saldo ≥ 0 või e-posti puudumine → vahele jäetud koos põhjusega.
+  tagastab tulemuse liikme kaupa. Saldo ≥ 0 → vahele jäetud koos põhjusega.
   `GET /api/admin/invoices?memberId=`, `POST /api/admin/invoices/{id}/resend` (ainult
   `FAILED`, sama number). Saldod ei muutu kunagi.
   Valmis, kui: võlts-`Mailer`-iga testid katavad numeratsiooni üle aastavahetuse, ebaõnnestunud
@@ -273,6 +320,6 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 - [ ] **B21 · Käivitamine ja varukoopiad** (S)
   Tootmise profiil (saladused keskkonnast, k.a SMTP parool ja `ANTHROPIC_API_KEY`, turvalised
-  küpsised), systemd unit, öine `pg_dump` taastamise kontrolliga. Tootmise andmebaas luuakse
+  küpsised k.a `REVKASSA_DEVICE`, `revkassa.app-url` HTTPS aadressiga), systemd unit, öine `pg_dump` taastamise kontrolliga. Tootmise andmebaas luuakse
   `2_create.sql`-iga (ilma `3_import.sql`-ita), hilisemad muudatused `docs/database/muudatused/`
   skriptidega. Dokumenteeri kausta `docs/`.

@@ -3,7 +3,7 @@
 **Teenus:** `GET /api/me`
 
 **Vaste mockupis:** [RevKassa Mockups](https://claude.ai/artifact/CiWBMreAkasT8zYQP9A222) — "Liikme rakendus — telefon" (`Main.dc.html`) ja "Liikme rakendus — tahvel" (`Tablet.dc.html`): päis nime ja saldoga kõigil sisselogitud ekraanidel (`isApp`, nt "Mari Tamm · Võlg 12,50 €") ja ekraan "Minu konto" (`isAccount`) saldo plokk ("Võlgned" / "Sinu ettemaks")
-**BE task:** B04 · **Kes:** liige (PIN- või admini sessioon)
+**BE task:** B04 · **Kes:** liige (PIN- või parooliga sessioon)
 
 ## Sisend
 
@@ -13,7 +13,7 @@ saa.
 ## Väljund
 
 **Response (200 OK):** sisselogitud liikme profiil ja **värske** saldo andmebaasist. DTO
-`MemberSessionDto` (`controller/common/dto/`, sama mis `POST /api/auth/pin` ja `POST /api/auth/admin`
+`MemberSessionDto` (`controller/common/dto/`, sama mis `POST /api/auth/pin` ja `POST /api/auth/login`
 vastusel).
 
 ```json
@@ -21,11 +21,14 @@ vastusel).
   "memberId": 1,
   "displayName": "Mari Tamm",
   "role": "ADMIN",
-  "balanceCents": -1250
+  "balanceCents": -1250,
+  "loginMethod": "PASSWORD"
 }
 ```
 
 - `displayName` — `member.display_name`.
+- `loginMethod` — `PIN` või `PASSWORD`, sessioonist (mitte andmebaasist). UI valib selle järgi
+  tegevusetuse aja ja kas näidata admini menüüd (ainult `PASSWORD` + `ADMIN`).
 - `role` — `MEMBER` või `ADMIN` (liikme roll, mitte sessiooni tüüp: admin PIN-sessiooniga näeb
   samuti `ADMIN`).
 - `balanceCents` — `member.balance_cents` eurosentides; positiivne = ettemaks, negatiivne = võlg.
@@ -38,7 +41,7 @@ vastusel).
 Pärast sisselogimist näitab liikme rakendus igal ekraanil päises liikme nime ja saldot ning "Minu
 konto" ekraanil suurelt saldot. Pärast ostu, makse teatamist või lehe värskendamist küsib UI selle
 teenuse kaudu ajakohase saldo. Teenus on ka lihtne viis kontrollida, kas sessioon veel kehtib
-(aegunud sessioon → 401 → UI naaseb PIN-i klahvistikule).
+(aegunud sessioon → 401 → UI naaseb avalehele: usaldatud seadmes PIN-i klahvistik, mujal parooli vorm).
 
 ## Seotud andmebaasi tabelid
 
@@ -50,7 +53,7 @@ eraldi `ALTER TABLE` / `CREATE INDEX` lausetena).
 ```sql
 create table member (
     id             bigint generated always as identity primary key,
-    email          text,
+    email          text        not null,
     display_name   text        not null,
     pin_hmac       text        not null,
     password_hash  text,
@@ -61,8 +64,7 @@ create table member (
     level_id       bigint      not null references membership_level (id),
     pin_changed_at timestamptz,
     created_at     timestamptz not null default now(),
-    version        bigint      not null default 0,
-    check (role <> 'ADMIN' or (email is not null and password_hash is not null))
+    version        bigint      not null default 0
 );
 ```
 
@@ -96,11 +98,12 @@ Märkused:
 
 - [ ] Endpoint `GET /api/me` on olemas ja nõuab sisselogimist.
 - [ ] PIN-sessiooniga → 200, vastus `{ memberId, displayName, role, balanceCents }` andmebaasi väärtustega.
-- [ ] Admini sessiooniga → 200 sama kujuga, `role: "ADMIN"`.
+- [ ] Parooliga sessiooniga → 200 sama kujuga, `loginMethod: "PASSWORD"`; admin `role: "ADMIN"`.
 - [ ] Saldo on värske: kui `balance_cents` andmebaasis muutub, näitab järgmine päring uut väärtust.
 - [ ] Negatiivne, null ja positiivne saldo tagastatakse õigesti (sentides, märgiga).
-- [ ] Ilma sessioonita / aegunud sessiooniga (1 min PIN, 30 min admin) → 401 `ApiError`-iga.
+- [ ] Ilma sessioonita / aegunud sessiooniga (1 min PIN, 30 min parool) → 401 `ApiError`-iga.
 - [ ] Mitteaktiivseks muudetud liige → 403, sessioon invalideeritakse.
 - [ ] Päring pikendab sessiooni (tegevusetuse taimer nullitakse).
 - [ ] Vastuses pole `pin_hmac`-i, `password_hash`-i ega e-posti.
+- [ ] PIN-sessioonis `loginMethod: "PIN"`.
 - [ ] MockMvc testid katavad õnnestumise mõlema sessioonitüübiga, 401 ja 403; `@SpringBootTest` kontrollib väärtusi päris Postgresist.

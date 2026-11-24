@@ -3,13 +3,16 @@
 --
 -- Sisselogimine arenduses:
 --   PIN-räsi on HMAC-SHA256(võti, PIN) hex-ina; võti arenduses: REVKASSA_PIN_SECRET=dev-pin-secret
---   Admini parool (Mari ja Jaan): parool123 (bcrypt)
+--   Parool (Mari, Jaan ja Kaspar): parool123 (bcrypt). Liis ja Rasmus pole parooli veel määranud
+--   (ainult PIN baaritahvlis); Rasmusel on kehtiv kutselink: /set-password?token=dev-invite-token
+--   Baaritahvel: küpsis REVKASSA_DEVICE=dev-tablet-token (trusted_device "Arenduse tahvel");
+--   ilma selleta POST /api/auth/pin → 403.
 --
 --   id | nimi        | PIN    | roll   | tase         | saldo lõpuks | märkus
 --    1 | Mari Tamm   | 482915 | ADMIN  | Täisliige    |   -12,50 €   | mari@example.org
 --    2 | Kaspar Kask | 111111 | MEMBER | Täisliige    |   -27,40 €   | ootel kaardimakse 10 €
 --    3 | Liis Lepp   | 222222 | MEMBER | Noorliige    |   -29,80 €   | e-posti kirjaviga (arve FAILED)
---    4 | Rasmus Pärn | 333333 | MEMBER | Noorliige    |    -8,20 €   | e-post puudub
+--    4 | Rasmus Pärn | 333333 | MEMBER | Noorliige    |    -8,20 €   | parooli pole, kutse ootel
 --    5 | Jaan Saar   | 555555 | ADMIN  | Vilistlane   |    +4,50 €   | tasust vabastatud, jaan@example.org
 --    6 | Kertu Mets  | 666666 | MEMBER | Toetajaliige |     0,00 €   | mitteaktiivne
 --
@@ -17,11 +20,20 @@
 
 -- member
 INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'mari@example.org', 'Mari Tamm', 'ad95f7d83aa4ca2b9739ba000c83cc398f655aa068bed3b22e5632eec411f0ce', '$2a$10$dlOgBYZ9MvgeOjamzay64OZYURBQUPNhRlv8TYAkeaP6dUTbQs6Cq', 'ADMIN', true, false, 1, '2026-08-01 10:00+03');
-INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'kaspar@example.org', 'Kaspar Kask', '022a92e11a89a2f073dbbe4578920272870cb113a551e1457781545bc05030b7', null, 'MEMBER', true, false, 1, '2026-08-01 10:00+03');
+INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'kaspar@example.org', 'Kaspar Kask', '022a92e11a89a2f073dbbe4578920272870cb113a551e1457781545bc05030b7', '$2a$10$dlOgBYZ9MvgeOjamzay64OZYURBQUPNhRlv8TYAkeaP6dUTbQs6Cq', 'MEMBER', true, false, 1, '2026-08-01 10:00+03');
 INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'liis@exmaple.org', 'Liis Lepp', '9b3c5f9d125357687af14cd00913895318a790f3fda196afb95853ed50277632', null, 'MEMBER', true, false, 2, '2026-08-01 10:00+03');
-INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, null, 'Rasmus Pärn', '1e1abb5386b5056d92bba774333a13bad36b18eff9735596da5facff18551109', null, 'MEMBER', true, false, 2, '2026-08-01 10:00+03');
+INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'rasmus@example.org', 'Rasmus Pärn', '1e1abb5386b5056d92bba774333a13bad36b18eff9735596da5facff18551109', null, 'MEMBER', true, false, 2, '2026-08-01 10:00+03');
 INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'jaan@example.org', 'Jaan Saar', '4a6a484ff1bf6cedf85fe3f515b76c24cd35cceb670babc6f2f0b3018c0c7ff2', '$2a$10$dlOgBYZ9MvgeOjamzay64OZYURBQUPNhRlv8TYAkeaP6dUTbQs6Cq', 'ADMIN', true, true, 3, '2026-07-01 10:00+03');
 INSERT INTO member (id, email, display_name, pin_hmac, password_hash, role, active, fee_exempt, level_id, created_at) VALUES (default, 'kertu@example.org', 'Kertu Mets', '02912bc7502f1ef511c112220dd994f0da321635127b3a85e61ea0807f78c97e', null, 'MEMBER', false, false, 4, '2026-08-01 10:00+03');
+
+
+-- trusted_device (arenduse baaritahvel; token = dev-tablet-token, salvestatud SHA-256 räsina)
+INSERT INTO trusted_device (id, name, token_hash, created_by, created_at, last_used_at, revoked_by, revoked_at) VALUES (default, 'Arenduse tahvel', 'c63597b9cc342bb90ede96dcdd159f7ca789748d66c2b31c7d0a14f40f8764b7', 1, '2026-08-01 10:00+03', null, null, null);
+INSERT INTO trusted_device (id, name, token_hash, created_by, created_at, last_used_at, revoked_by, revoked_at) VALUES (default, 'Vana tahvel', '1570263601ac7b929eb5a12007a13d6cbf4a29c067ea19b7d5080e6531c1c2e3', 1, '2026-07-01 10:00+03', '2026-07-31 22:00+03', 1, '2026-08-01 10:00+03');
+
+
+-- password_token (Rasmuse kutse; token = dev-invite-token, kehtib arenduses kaua)
+INSERT INTO password_token (id, member_id, token_hash, purpose, expires_at, used_at, created_by, created_at) VALUES (default, 4, '2e9ca50506a0df5b98a99b9a21553b7cd128cca83e870205f76323784789e022', 'INVITE', '2099-01-01 00:00+02', null, 1, '2026-11-20 12:00+02');
 
 
 -- product (laoseis lõpuks: 22, 15, 18, 12, 5, 3, 9, 10, 0)

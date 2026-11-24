@@ -18,8 +18,12 @@ Mockupid: "RevKassa Mockups" disainilõuend — vt [mockupid/loudend.md](mockupi
 ## Ulatus (v1)
 
 Sees:
-- Liikme sisselogimine **ainult PIN-iga** (nime ega e-posti ei valita); rollid `MEMBER` ja
-  `ADMIN` (admin on ka liige). Admini lehed nõuavad lisaks e-posti ja parooli.
+- Kaks sisselogimise viisi; rollid `MEMBER` ja `ADMIN` (admin on ka liige):
+  - **PIN** (nime ega e-posti ei valita) — **ainult admini registreeritud seadmes** (baaritahvel).
+  - **E-post + parool** — igal pool mujal (isiklik telefon, arvuti), ka tahvlis. Annab samad
+    liikme õigused (k.a ostmine); admini lehed avanevad ainult parooliga sessioonis.
+- Konto loob alati admin; liige saab e-postiga **ühekordse lingi parooli määramiseks**.
+  "Unustasid parooli?" saadab uue lingi.
 - Iseteeninduslik ost: vali joogid, kinnita, summa läheb liikme saldole.
 - Isiklik ostuvaade: iga liige märgib lemmikjoogid tärniga ja järjestab need; lemmikud on
   ees, kõik muu all.
@@ -50,28 +54,48 @@ Sees:
   ainult siis, kui admin need vastu võtab. Väljas, kui API võtit pole seadistatud.
 
 Väljas (praegu): veebimaksed, vaadi/mahu arvestus, mitu asukohta, käibemaksuarved /
-raamatupidamise eksport, muud e-kirjad (kviitungid, automaatsed meeldetuletused), liikmete
+raamatupidamise eksport, muud e-kirjad peale arvete ja parooli linkide (kviitungid, automaatsed meeldetuletused), liikmete
 iseregistreerimine (organisatsiooni liikmeks), liikme enda ürituselt loobumine, piletimüük /
 ürituse maksed, AI mujal kui ürituse abilises.
 
 ## Reeglid
 
 Sisselogimine
-- Liige logib sisse, sisestades klahvistikul oma PIN-i. PIN üksi tuvastab liikme, seega on
-  PIN-id **unikaalsed**, täpselt **6 numbrit**. Admin määrab / lähtestab PIN-i ja liige saab
-  oma PIN-i ise muuta konto lehel (praegune PIN + uus kaks korda; uus peab olema unikaalne ja
-  eelmisest erinev). PIN salvestatakse HMAC-SHA256-na serveri salajase võtmega, et
-  sisselogimisel saaks liikme selle järgi üles leida ilma PIN-i ennast salvestamata.
-- Jõurünnaku kaitse samast seadmest/IP-st: pärast 5 valet PIN-i lukustub klahvistik
-  **1 minutiks**. Pärast lukustust lukustab **iga järgmine** vale PIN uuesti, iga kord
-  pikemalt: **5 min → 10 min → 30 min → 1 h → 1 päev**, edasi jääb 1 päev. Õnnestunud
-  sisselogimine nullib loenduri ja taseme. Lukustuse ajal klahvistik ei võta sisestust vastu
-  ja näitab järelejäänud aega. Õnnestunud sisselogimised ja lukustused logitakse.
+- **Usaldatud seade:** admin avab baaritahvlis parooliga sisselogitult "Registreeri see seade
+  baaritahvliks" ja annab nime. Server loob juhusliku tokeni (32 baiti), salvestab selle
+  SHA-256 räsi tabelisse `trusted_device` ja paneb seadmesse küpsise `REVKASSA_DEVICE`
+  (`HttpOnly`, `SameSite=Strict`, tootmises `Secure`, kehtib 400 päeva ja pikeneb igal
+  kasutamisel). Admin näeb seadmete nimekirja (nimi, registreeritud, viimati kasutatud) ja saab
+  seadme **tühistada**; tühistatud või tundmatu küpsis = tavaline seade.
+- **PIN-iga sisselogimine** (`POST /api/auth/pin`) töötab ainult kehtiva seadmeküpsisega;
+  muidu 403 ja PIN-i üldse ei kontrollita. UI küsib avalehel `GET /api/auth/device` ja näitab
+  usaldatud seadmes PIN-i klahvistikku, mujal e-posti ja parooli vormi.
+- PIN tuvastab liikme üksi, seega on PIN-id **unikaalsed**, täpselt **6 numbrit**. Admin määrab /
+  lähtestab PIN-i (näidatakse üks kord) ja liige saab selle ise muuta konto lehel (praegune PIN +
+  uus kaks korda; uus peab olema unikaalne ja eelmisest erinev). PIN salvestatakse
+  HMAC-SHA256-na serveri salajase võtmega, et sisselogimisel saaks liikme selle järgi üles leida
+  ilma PIN-i ennast salvestamata. PIN-e e-postiga ei saadeta.
+- PIN-i jõurünnaku kaitse **seadme kaupa**: pärast 5 valet PIN-i lukustub klahvistik **1
+  minutiks**. Pärast lukustust lukustab **iga järgmine** vale PIN uuesti, iga kord pikemalt:
+  **5 min → 10 min → 30 min → 1 h → 1 päev**, edasi jääb 1 päev. Õnnestunud sisselogimine
+  nullib loenduri ja taseme. Lukustuse ajal klahvistik ei võta sisestust vastu ja näitab
+  järelejäänud aega. Õnnestunud sisselogimised ja lukustused logitakse.
 - PIN-sessioon lõpeb "Logi välja" / "Valmis, logi mind välja" peale või pärast **1 minutit
-  tegevusetust** igas seadmes (ühine tahvel ja isiklikud telefonid). Seda jõustab server
-  (sessiooni aegumine) ja peegeldab UI, mis naaseb PIN-i klahvistikule.
-- Admini lehed vajavad teist sisselogimist e-posti ja parooliga (bcrypt), sessiooni aegumine
-  30 minutit tegevusetust. PIN-sessioon üksi ei anna kunagi admini õigusi.
+  tegevusetust**. Seda jõustab server (sessiooni aegumine) ja peegeldab UI, mis naaseb PIN-i
+  klahvistikule. PIN-sessioon ei anna kunagi admini õigusi.
+- **Parooliga sisselogimine** (`POST /api/auth/login`, e-post + bcrypt parool) töötab igas
+  seadmes. Sessioon aegub pärast **30 minutit tegevusetust**. Liikmel on tavalised liikme
+  õigused, `ADMIN`-il lisaks admini lehed. Vale e-post, vale parool ja määramata parool annavad
+  sama vastuse. Jõurünnaku kaitse sama kasvava lukustusega **IP kaupa** (eraldi loendur).
+- **Parooli link:** liikme loomisel saadab rakendus talle e-kirja lingiga
+  `<app-url>/set-password?token=…` (kutse, kehtib **7 päeva**). "Unustasid parooli?" (e-post)
+  saadab lähtestamise lingi (kehtib **1 tund**); vastus on alati sama, olenemata sellest, kas
+  e-post on olemas. Admin saab liikmele uue kutse saata. Token on juhuslik (32 baiti), andmebaasis
+  ainult selle SHA-256 räsi (`password_token`), link on **ühekordne**: kasutamisel märgitakse
+  kasutatuks ja liikme teised kehtivad lingid tühistatakse. Parool vähemalt **10 märki**.
+  Parooli määramine ei logi sisse — liige logib pärast sisse tavaliselt.
+- Liige saab konto lehel parooli muuta (praegune + uus kaks korda).
+- Mitteaktiivne liige ei saa kummagi viisiga sisse logida ega parooli linki kasutada.
 
 Raha
 - Kõik summad on täisarvulised **eurosendid** (Javas `long`, SQL-is `bigint`). Mitte kunagi `double`.
@@ -112,8 +136,7 @@ Liikmemaks
 - Liige näeb saldo ajaloos "Liikmemaks · oktoober 2026".
 
 Arve e-kirjad
-- Liikmel on valikuline `email` (adminil kohustuslik). E-postita liikmed on nimekirjas, aga
-  neid ei saa valida.
+- Igal liikmel on `email` (kohustuslik, sama mis sisselogimisel).
 - Admini "Arved" vaade näitab negatiivse saldoga liikmeid koos e-posti ja viimase arve
   kuupäevaga. Admin märgib liikmed (vaikimisi kõik, kellel on e-post ja kellele pole viimase
   7 päeva jooksul arvet saadetud), vaatab ühe kirja eelvaadet ja saadab.
@@ -126,7 +149,8 @@ Arve e-kirjad
 - Lihttekstiga e-kiri SMTP kaudu. Iga kiri saadetakse ja salvestatakse eraldi, nii et üks halb
   aadress ei peata teisi; ebaõnnestunud kirjad näitavad viga ja neid saab uuesti saata.
 - Seaded tulevad konfiguratsioonist, mitte andmebaasist: `revkassa.invoice.org-name`, `.iban`,
-  `.from`, `.reply-to`, `.due-days` ning standardsed `spring.mail.*` SMTP seaded (saladused
+  `.due-days`; kõigile kirjadele (arved, parooli lingid) `revkassa.mail.from`, `.reply-to`,
+  `revkassa.app-url` (linkide jaoks) ning standardsed `spring.mail.*` SMTP seaded (saladused
   keskkonnamuutujatest). Ilma `spring.mail.host`-ita (arendus) kirjutatakse kirjad logisse.
 
 Keel
@@ -199,7 +223,7 @@ AI abiline (valikuline)
   Skeem on failides `docs/database/1_reset_database.sql`, `2_create.sql`, `3_import.sql`, mida käivitatakse
   käsitsi (IntelliJ Database konsool või `psql`); Hibernate ainult valideerib.
   Tootmises tehakse skeemimuudatus käsitsi muudatusskriptiga (`docs/database/muudatused/`).
-- E-post: `spring-boot-starter-mail`; igakuine tasutöö kasutab `@Scheduled` (üks instants,
+- E-post: `spring-boot-starter-mail` (parooli lingid ja arved); igakuine tasutöö kasutab `@Scheduled` (üks instants,
   eraldi ajastamise teeki pole).
 - AI: Anthropic Java SDK (`com.anthropic:anthropic-java`) `EventAssistant` liidese taga;
   ilma võtmeta väljalülitatud implementatsioon, testides võlts.
@@ -210,7 +234,7 @@ AI abiline (valikuline)
 - **Liikme vaated on mobile-first:** kujundatud ~390px telefonile ja suurendatud
   `min-width` meediapäringutega. Telefon: üks veerg, alumine tabiriba (Osta · Üritused ·
   Konto · Logi välja), tellimuse summa kleepuval alumisel ribal, puutealad ≥ 44px.
-- **Ühine baaritahvel:** 11" 1920×1200 landscape, mida brauser näitab umbes
+- **Ühine baaritahvel** (admini registreeritud usaldatud seade, ainus koht PIN-i klahvistikuga): 11" 1920×1200 landscape, mida brauser näitab umbes
   **1280×800 CSS px**-ina (1,5× skaleerimine). Alates `min-width: 1024px` lähevad liikme vaated
   tahvli paigutusse: päis nime, saldo ja Osta · Üritused · Konto · Logi välja nuppudega;
   ostuvaade 4-veerulise joogiruudustiku ja paremal alati nähtava tellimuspaneeliga (eraldi
@@ -221,11 +245,15 @@ AI abiline (valikuline)
 
 | Meetod ja tee | Kes | Eesmärk |
 |---|---|---|
-| `POST /api/auth/pin` | kõik | `{pin}` → liikme sessioon (piiratud katsete arv) |
-| `POST /api/auth/admin` | admin | `{email, password}` → admini sessioon |
+| `GET /api/auth/device` | kõik | `{trusted, name}` — kas see seade on usaldatud (PIN või parooli vorm) |
+| `POST /api/auth/pin` | usaldatud seade | `{pin}` → liikme sessioon (piiratud katsete arv) |
+| `POST /api/auth/login` | kõik | `{email, password}` → liikme sessioon, `ADMIN`-il ka admini õigused |
+| `POST /api/auth/password-reset` | kõik | `{email}` → saadab lähtestamise lingi; alati 204 |
+| `POST /api/auth/set-password` | kõik | `{token, password}` → määrab parooli, link kehtetuks |
 | `POST /api/auth/logout` | kõik | lõpeta sessioon |
 | `GET /api/me` | liige | profiil ja saldo |
 | `PUT /api/me/pin` | liige | `{currentPin, newPin}` — muuda oma PIN-i |
+| `PUT /api/me/password` | liige | `{currentPassword, newPassword}` — muuda oma parooli |
 | `GET /api/products` | liige | aktiivsed tooted hinna ja laoseisuga |
 | `POST /api/purchases` | liige | `{lines:[{productId, quantity}]}` → ost |
 | `POST /api/purchases/{id}/undo` | liige (oma, ≤10 min) / admin | võta ost tagasi |
@@ -246,6 +274,10 @@ AI abiline (valikuline)
 | `GET/POST/PUT /api/admin/members` | admin | liikmed ja rollid |
 | `GET /api/admin/members/{id}/purchases` | admin | liikme ostud, uuemad ees (tagasivõtmine: `POST /api/purchases/{id}/undo`) |
 | `POST /api/admin/members/{id}/pin` | admin | määra või lähtesta liikme PIN |
+| `POST /api/admin/members/{id}/invite` | admin | saada uus parooli määramise link (vanad tühistatakse) |
+| `GET /api/admin/devices` | admin | usaldatud seadmed |
+| `POST /api/admin/devices` | admin (parool) | `{name}` → registreeri **see** seade, paneb küpsise `REVKASSA_DEVICE` |
+| `POST /api/admin/devices/{id}/revoke` | admin | tühista seade |
 | `POST /api/admin/members/{id}/adjustments` | admin | käsitsi saldo parandus märkusega |
 | `GET /api/admin/fees` | admin | praegune tasu taseme kaupa ja ajalugu |
 | `POST /api/admin/fees` | admin | `{validFrom: "2026-11", fees:[{levelId, amountCents}]}` — uued tasud alates kuust |
@@ -271,24 +303,27 @@ AI abiline (valikuline)
 
 ## Vaated
 
-Liige: PIN-i klahvistik · Ostmine (lemmikud ees, siis ülejäänud) · Ostuvaate kohandamine ·
+Liige: Sisselogimine (usaldatud seadmes PIN-i klahvistik, mujal e-post + parool, "Unustasid
+parooli?") · Parooli määramine (lingilt) · Ostmine (lemmikud ees, siis ülejäänud) · Ostuvaate kohandamine ·
 Tellimus · Ost tehtud (tagasivõtmisega) · Üritused (eelseisvad, registreerumine) · Minu konto
-(saldo, ajalugu, maksest teatamine). Telefoni tabiriba: Osta · Üritused · Konto · Logi välja.
-Admin: Admini sisselogimine (e-post + parool) · Ülevaade (madal/negatiivne laoseis, ootel
+(saldo, ajalugu, maksest teatamine, PIN-i ja parooli muutmine). Telefoni tabiriba: Osta · Üritused · Konto · Logi välja.
+Admin: (sama parooliga sisselogimine) · Ülevaade (madal/negatiivne laoseis, ootel
 maksed, suurimad võlglased) · Tooted ja ladu · Tarne sisestamine · Inventuur · Kinnitamist
-ootavad maksed · Liikmed (k.a e-post, tasust vabastus) · Liikmemaksud (summa taseme kaupa,
+ootavad maksed · Liikmed (k.a e-post, tasust vabastus, kutse uuesti saatmine) · Seadmed (registreeri see
+tahvel, tühista) · Liikmemaksud (summa taseme kaupa,
 kuised tasud, tühistamine) · Arved (vali liikmed, eelvaade, saada) · Liikmetasemed (liikmete
 vaates) · Üritused (nimekiri, detail osalejate, tasude ja eelarvega, AI abilise paneel).
 
 ## Verstapostid
 
-1. **Alus** — andmebaasi skriptid (kogu skeem), vead, turvalisus + sisselogimine, esimene
-   admin, Vue router ja paigutus, API kliendi seaded.
+1. **Alus** — andmebaasi skriptid (kogu skeem), vead, turvalisus + sisselogimine (PIN
+   usaldatud seadmes, parool mujal), seadmete registreerimine, e-kirjade saatmine ja parooli
+   lingid, esimene admin, Vue router ja paigutus, API kliendi seaded.
 2. **Tooted ja ladu** — admini toodete CRUD, tarned, laopearaamat, inventuur, mahakandmised.
 3. **Ostmine** — ostuvaade isiklike lemmikutega, ostuteenus (saldo + ladu ühes transaktsioonis), tagasivõtmine.
 4. **Konto ja maksed** — liikme ajalugu, maksest teatamine, admini kinnitamine/tagasilükkamine, parandused.
 5. **Admini ülevaade** — ülevaateleht, liikmete haldus, lihtsad aruanded (müük toote/kuu kaupa).
-6. **Tasud ja arved** — liikmemaks ja kuine tasutöö, tühistamised, e-kirjade saatmine, arvete vaade.
+6. **Tasud ja arved** — liikmemaks ja kuine tasutöö, tühistamised, arvete saatmine ja vaade.
 7. **Üritused** — liikmetasemed, üritused tasemepõhiste tasudega, osalejad, eelarve.
 8. **AI abiline** (valikuline) — ürituse eelarve/retseptide abiline lüliti taga.
 9. **Väljalase** — frontend jar-faili, teenusena käivitamine, andmebaasi varukoopiad, SMTP ja AI võtmed.

@@ -48,13 +48,15 @@ API kutsed tulevad [PLAN.md](../PLAN.md) API visandist.
 
 | Ekraan | Lipp | Vaade, route | Task | API kutsed |
 |---|---|---|---|---|
-| PIN-i klahvistik (+ lukustus `isLocked`) | `isLogin` | `PinView.vue`, `/` | F04 | `POST /api/auth/pin` |
+| PIN-i klahvistik (+ lukustus `isLocked`) — **ainult usaldatud seadmes** (telefonis makett-lüliti "see on baaritahvel") | `isLogin` + `showPin` | `LoginView.vue` (+ `PinPad.vue`), `/` | F04 | `GET /api/auth/device`, `POST /api/auth/pin` |
+| Parooliga sisselogimine (telefon, arvuti) | `isLogin` + `showPwForm` (ainult `Main`) | `LoginView.vue` (+ `PasswordLoginForm.vue`), `/` | F06 | `POST /api/auth/login` |
+| Unustasid parooli? / Parooli määramine kutselingilt (+ aegunud link `spExpired`) | `isForgot` / `isSetPw` (ainult `Main`) | `SetPasswordView.vue` `/set-password`, `ForgotPasswordView.vue` `/forgot-password` | F30 | `POST /api/auth/set-password`, `POST /api/auth/password-reset` |
 | Ostmine | `isBuy` | `BuyView.vue`, `/buy` | F10 | `GET /api/products`, `GET /api/me/favourites` |
 | Lemmikute kohandamine | `isCustomise` | `CustomiseView.vue`, `/buy/customise` | F12 | `GET`/`PUT /api/me/favourites` |
 | Tellimus | `isReview` (ainult telefon; tahvlil ostuvaate paneel) | `OrderView.vue`, `/order` | F11 | `POST /api/purchases` |
 | Ost tehtud | `isDone` | `DoneView.vue`, `/done` | F11 | `POST /api/purchases/{id}/undo`, `POST /api/auth/logout` |
 | Üritused | `isEvents` | `EventsView.vue`, `/events` | F27 | `GET /api/events`, `POST /api/events/{id}/signup` |
-| Minu konto (+ PIN-i muutmine `pinForm`) | `isAccount` | `AccountView.vue`, `/account` | F13, F14, F29 | `GET /api/me`, `GET /api/me/entries`, `GET /api/me/payments?status=PENDING`, `POST /api/payments`, `PUT /api/me/pin` |
+| Minu konto (+ PIN-i muutmine `pinForm`, parooli muutmine `cpForm`) | `isAccount` | `AccountView.vue`, `/account` | F13, F14, F29 | `GET /api/me`, `GET /api/me/entries`, `GET /api/me/payments?status=PENDING`, `POST /api/payments`, `PUT /api/me/pin`, `PUT /api/me/password` (F32) |
 
 Kõigil sisselogitud ekraanidel (`isApp`) on päis nime ja saldoga ning tabiriba (F03).
 
@@ -62,13 +64,14 @@ Kõigil sisselogitud ekraanidel (`isApp`) on päis nime ja saldoga ning tabiriba
 
 | Ekraan | Lipp (arvuti) | Lipp (telefon) | Vaade, route | Task | API kutsed |
 |---|---|---|---|---|---|
-| Admini sisselogimine | `needsLogin` | `needsLogin` | `AdminLoginView.vue`, `/admin/login` | F06 | `POST /api/auth/admin` |
+| Sisselogimine (sama mis liikmel, e-post + parool) | `needsLogin` | `needsLogin` | `LoginView.vue`, `/` | F06 | `POST /api/auth/login` |
+| Seadmed | `isDevices` | — (registreeritakse tahvlis, laua paigutus) | `AdminDevicesView.vue`, `/admin/devices` | F31 | `GET`/`POST /api/admin/devices`, `POST …/{id}/revoke` |
 | Ülevaade | `isDashboard` | `isOverview` | `AdminDashboardView.vue`, `/admin` | F17 | `GET /api/admin/dashboard` |
 | Tooted (+ muutmine) | `isProducts` (+ `showEditProduct`) | `isStock` (+ `showNewProduct`), detail `isProduct` ("Muuda toodet") | `AdminProductsView.vue`, `/admin/products` | F07 | `GET`/`POST`/`PUT /api/admin/products` |
 | Tarne | `isDelivery` | `isProduct` (−/+ ja kiirnupud) | `AdminDeliveryView.vue`, `/admin/delivery` | F08 | `POST /api/admin/stock/deliveries` |
 | Inventuur, mahakandmine | `isStocktake` (all "Kanna maha") | `isStock`, detail `isProduct` ("Kanna maha") | `AdminStocktakeView.vue`, `/admin/stocktake` | F09 | `POST /api/admin/stock/stocktake`, `POST /api/admin/stock/write-offs` |
 | Maksed | `isPayments` (+ "Sisesta makse" `showPaymentForm`) | `isPayments` (+ `showPaymentForm`) | `AdminPaymentsView.vue`, `/admin/payments` | F15 | `GET /api/admin/payments?status=PENDING`, `POST …/{id}/confirm`, `…/reject`; `POST /api/admin/payments` (admin sisestab kinnitatud makse) |
-| Liikmed ja tasemed | `isMembers` (+ `showEditMember`, "Ostud" `showPurchases`) | `isMembers` (+ `showNewMember`, `showLevels`), detail `isMember` ("Muuda andmeid", "Ostud") | `AdminMembersView.vue`, `/admin/members` | F16, F22 | `GET`/`POST`/`PUT /api/admin/members`, `POST …/{id}/pin`, `POST …/{id}/adjustments`, `GET`/`POST`/`PUT /api/admin/levels`; `GET /api/admin/members/{id}/purchases`, `POST /api/purchases/{id}/undo` |
+| Liikmed ja tasemed (+ "Parool määramata" / "Saada link uuesti") | `isMembers` (+ `showEditMember`, "Ostud" `showPurchases`) | `isMembers` (+ `showNewMember`, `showLevels`), detail `isMember` ("Muuda andmeid", "Ostud") | `AdminMembersView.vue`, `/admin/members` | F16, F22 | `GET`/`POST`/`PUT /api/admin/members`, `POST …/{id}/pin`, `POST …/{id}/invite`, `POST …/{id}/adjustments`, `GET`/`POST`/`PUT /api/admin/levels`; `GET /api/admin/members/{id}/purchases`, `POST /api/purchases/{id}/undo` |
 | Liikmemaksud | `isFees` | `isBilling` | `AdminFeesView.vue`, `/admin/fees` | F20 | `GET`/`POST /api/admin/fees`, `GET /api/admin/fees/charges`, `POST …/charges/{id}/waive` |
 | Arved | `isInvoices` | `isBilling` | `AdminInvoicesView.vue`, `/admin/invoices` | F21 | `GET /api/admin/invoices/candidates`, `GET …/preview`, `POST /api/admin/invoices`, `GET /api/admin/invoices?memberId=`, `POST …/{id}/resend` |
 | Ürituste nimekiri | `isEventList` | `isEvents` | `AdminEventsView.vue`, `/admin/events` | F23 | `GET`/`POST /api/admin/events` |

@@ -1,5 +1,6 @@
 package ee.revkassa.persistence.member;
 
+import ee.revkassa.persistence.membershiplevel.MembershipLevel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -18,7 +19,8 @@ public class Member {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "email", length = Integer.MAX_VALUE)
+    @NotNull
+    @Column(name = "email", nullable = false, length = Integer.MAX_VALUE)
     private String email;
 
     @NotNull
@@ -33,8 +35,9 @@ public class Member {
     private String passwordHash;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = Integer.MAX_VALUE)
-    private String role;
+    private MemberRoleEnum role;
 
     @NotNull
     @ColumnDefault("0")

@@ -9,9 +9,9 @@ frontend/src/
 ├── router/
 │   └── index.js             kõik route'id ja guard'id
 ├── views/                   üks fail iga route'i kohta, nimega <Nimi>View.vue
-│   ├── PinView.vue          liikme vaated: ilma eesliiteta
+│   ├── LoginView.vue        liikme vaated: ilma eesliiteta (avaleht: PIN või parool)
 │   ├── BuyView.vue
-│   ├── AdminLoginView.vue   admini vaated: eesliide Admin
+│   ├── AdminDevicesView.vue admini vaated: eesliide Admin
 │   └── AdminProductsView.vue
 ├── components/
 │   ├── common/              väikesed taaskasutatavad osad (AlertDanger, MoneyAmount, StatusPill, ...)
@@ -21,7 +21,7 @@ frontend/src/
 ├── navigation/
 │   ├── MemberNavigation.vue  liikme päis + alumine tabiriba (Osta · Üritused · Konto · Logi välja)
 │   ├── AdminNavigation.vue   admini ülemenüü (laual) / alumine tabiriba (telefonis)
-│   └── NavigationService.js  ühised suunamised (nt navigateToPinView, navigateToAdminLogin)
+│   └── NavigationService.js  ühised suunamised (nt navigateToLogin, navigateToBuy)
 ├── api-services/
 │   └── <Ressurss>Service.js  üks fail ressursi kohta, axios'e kutsed, tagastab promise'i
 ├── utils/

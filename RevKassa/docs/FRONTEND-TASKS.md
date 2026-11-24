@@ -40,23 +40,27 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F02 · axios ja abifunktsioonid** (S)
   Lisa `axios` ja `vue-router`. `main.js`: axios'e response interceptor — 401 → sessioon
-  aegunud, suuna `NavigationService` kaudu sisselogimisse (CSRF päis `X-XSRF-TOKEN` tuleb
+  aegunud, suuna `NavigationService` kaudu avalehele `/` (CSRF päis `X-XSRF-TOKEN` tuleb
   axios'elt automaatselt `XSRF-TOKEN` küpsisest). `utils/format.js`: `formatEuro(cents)`
   (`et-EE`, `€`, negatiivsel miinusmärk) ja `formatDate()`.
   Valmis, kui: ühiktestid katavad vormindamise.
 
 - [ ] **F03 · Router, sessioon ja navigatsioon** (M) — vajab B04
-  Route'id: `/` PIN, `/buy`, `/buy/customise`, `/order`, `/done`, `/account`,
-  `/admin/login`, `/admin/...`, `meta: { member: true }` / `meta: { admin: true }`.
-  `utils/session.js` hoiab `GET /api/me` vastust `sessionStorage`'is. Guard'id: liikme route'id
-  vajavad liikme sessiooni, `/admin/**` admini sessiooni. `navigation/MemberNavigation.vue`
+  Route'id: `/` sisselogimine (PIN või parool, F04/F06), `/set-password`, `/forgot-password`,
+  `/buy`, `/buy/customise`, `/order`, `/done`, `/account`, `/admin/...`,
+  `meta: { member: true }` / `meta: { admin: true }`.
+  `utils/session.js` hoiab `GET /api/me` vastust (k.a `loginMethod`) `sessionStorage`'is.
+  Guard'id: liikme route'id vajavad sessiooni, `/admin/**` parooliga sessiooni ja rolli `ADMIN`
+  (PIN-sessioonis → teade "Admini lehtedele logi sisse parooliga"). `navigation/MemberNavigation.vue`
   (päis nime + saldoga, alumine tabiriba Osta · Konto · Logi välja);
   `navigation/AdminNavigation.vue` (laual ülemenüü, telefonis alumised tabid, "Logi välja").
   `App.vue` valib navigatsiooni route'i `meta` järgi.
   Valmis, kui: guard'id suunavad õigesti ja mõlemad navigatsioonid töötavad mõlemal laiusel.
 
-- [ ] **F04 · PIN-i klahvistik** (M) — vajab B04, B05
-  `PinView.vue`: kuus täppi, 3×4 klahvistik (C, 0, ⌫), automaatne saatmine 6. numbri järel,
+- [ ] **F04 · Avaleht ja PIN-i klahvistik** (M) — vajab B04, B05, B35
+  `LoginView.vue` (`/`) küsib `GET /api/auth/device`: usaldatud seadmes näitab PIN-i
+  klahvistikku (komponent `PinPad.vue`) ja väikest linki "Logi sisse parooliga", muidu ainult
+  parooli vormi (F06). PIN-i klahvistik: kuus täppi, 3×4 klahvistik (C, 0, ⌫), automaatne saatmine 6. numbri järel,
   vale PIN-i teade ("Veel N katset enne lukustust"), lukustuse teade loenduriga (429 + `Retry-After`;
   klahvistik keelatud, näitab ka järgmise lukustuse pikkust), töötavad ka klaviatuuri numbrid.
   Õnnestumine → `/buy`.
@@ -65,13 +69,26 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 - [ ] **F05 · Tegevusetuse väljalogimine** (S) — pärast F03
   `utils/idleLogout.js` (`start(ms, onExpire)`, `stop()`), käivitatakse `App.vue`-st: lähtestub
   puudutuse/klahvi/kerimise peale; aegumisel logib välja, tühjendab `sessionStorage`'i
-  (sessioon + ostukorv) ja naaseb PIN-i vaatesse (liige, **1 min**) või admini sisselogimisse
-  (admin, **30 min**). Serveri 401 teeb sama.
+  (sessioon + ostukorv) ja naaseb avalehele `/`; aeg sõltub `loginMethod`-ist: PIN **1 min**,
+  parool **30 min**. Serveri 401 teeb sama.
   Valmis, kui: ühiktest võltstaimeritega; käsitsi kontroll, et ostukorv tühjeneb.
 
-- [ ] **F06 · Admini sisselogimine** (S) — vajab B04
-  `AdminLoginView.vue`: e-posti + parooli vorm, veateade, märkus, et PIN-ist ei piisa.
-  Õnnestumine → `/admin`.
+- [ ] **F06 · Parooliga sisselogimine** (S) — vajab B04, B05
+  `LoginView.vue` parooli vorm (komponent `PasswordLoginForm.vue`): e-post, parool, veateade,
+  lukustuse teade (429), link "Unustasid parooli?". Õnnestumine → `/buy` (admin samuti; admini
+  menüüsse pääseb päisest). Telefonis ja arvutis on see ainus sisselogimise viis.
+
+- [ ] **F30 · Parooli määramine ja unustatud parool** (S) — vajab B36
+  `SetPasswordView.vue` (`/set-password?token=`): uus parool kaks korda (≥ 10 märki, kattuvad),
+  õnnestumisel "Parool määratud" + nupp "Logi sisse"; aegunud/kasutatud link → "Link on aegunud
+  või juba kasutatud. Küsi uus link." lingiga `/forgot-password`. `ForgotPasswordView.vue`:
+  e-post → alati "Kui see e-post on meil olemas, saatsime sellele lingi."
+  Valmis, kui: töötab 390px juures ja logiva saatjaga (link võetakse backendi logist).
+
+- [ ] **F31 · Admin: seadmed** (S) — vajab B35
+  Admini menüüpunkt "Seadmed": nimekiri (nimi, registreeritud, viimati kasutatud, Tühistatud),
+  "Tühista" kinnitusega; nupp "Registreeri see seade baaritahvliks" (nimi) — näidatakse, kui see
+  seade pole veel usaldatud, selgitusega, et pärast seda saab siin PIN-iga sisse logida.
 
 ## Verstapost 2 — Admin: tooted ja ladu
 
@@ -112,6 +129,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Saldokaart ("Sinu võlg" / "Sinu ettemaks"), ootel maksed, ajalugu nupuga "Laadi veel".
   Tahvel: vasakul saldo ja maksevorm, paremal ootel maksed ja ajalugu.
 
+- [ ] **F32 · Parooli muutmine** (S) — vajab B37
+  Konto lehel nupp "Muuda parooli" → praegune parool, uus kaks korda (≥ 10 märki). Õnnestumisel
+  "Parool muudetud".
+
 - [ ] **F29 · PIN-i muutmine** (S) — vajab B34
   Konto lehel nupp "Muuda PIN-koodi" → vorm: praegune PIN, uus PIN, uus PIN uuesti (numbriklaviatuur,
   peidetud sisestus). Frontendis kontroll: 6 numbrit, uued kattuvad. Õnnestumisel teade
@@ -126,9 +147,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   "Sisesta makse": liige, makseviis, summa, selgitus → salvestub kohe kinnitatuna, saldo uueneb.
 
 - [ ] **F16 · Admin: liikmed** (M) — vajab B17
-  Nimekiri saldo ja staatusega; e-posti ja tasust vabastuse väljad; liikme lisamine ja PIN-i
-  lähtestamine näitavad uut PIN-i dialoogis **üks kord**; saldo parandus (summa + kohustuslik
-  põhjus); rolli/aktiivsuse muutmine (adminiks tegemisel e-post + parool); "Ostud": liikme
+  Nimekiri saldo ja staatusega (+ "Parool määramata" märk); e-post (kohustuslik) ja tasust
+  vabastuse väli; liikme lisamine ("Kutse saadetud aadressile …") ja PIN-i lähtestamine näitavad
+  uut PIN-i dialoogis **üks kord**; "Saada kutse uuesti"; saldo parandus (summa + kohustuslik
+  põhjus); rolli/aktiivsuse muutmine; "Ostud": liikme
   ostude nimekiri, "Tühista ost" (kinnitusega) võtab ostu tagasi (vajab ka B12).
 
 ## Verstapost 5 — Admini ülevaade
@@ -149,9 +171,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   kohustusliku märkusega. Menüüpunkt "Tasud".
 
 - [ ] **F21 · Admin: arvete saatmine** (M) — vajab B26
-  Võlglased: nimi, võlg, e-post, viimane arve. Linnukesed, eelvalitud = e-post olemas ja
-  7 päeva jooksul arvet pole saadetud; e-postita read keelatud lingiga "lisa e-post" liikme
-  juurde. "Eelvaade" näitab ühe liikme kirja. "Saada n arvet" (kinnitusdialoog, nupp keelatud
+  Võlglased: nimi, võlg, e-post, viimane arve. Linnukesed, eelvalitud = 7 päeva jooksul
+  arvet pole saadetud. "Eelvaade" näitab ühe liikme kirja. "Saada n arvet" (kinnitusdialoog, nupp keelatud
   saatmise ajal) → tulemus liikme kaupa (Saadetud / Ebaõnnestus + põhjus, Saada uuesti).
   Arvete ajalugu liikme detailis. Menüüpunkt "Arved".
   Valmis, kui: töötab laua ja telefoni laiusel; testitud logiva saatjaga.
