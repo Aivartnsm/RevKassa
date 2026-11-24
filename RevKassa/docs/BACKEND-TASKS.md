@@ -87,12 +87,17 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: testid katavad räsi, tokeni kuju, `trusted` õige/vale/tühistatud/puuduva küpsisega ja
   küpsise atribuudid.
 
-- [ ] **B25 · E-kirjade saatmine** (S) — pärast B02
+- [x] **B25 · E-kirjade saatmine** (S) — pärast B02
   Lisa `spring-boot-starter-mail`. `Mailer` liides (`infrastructure/mail/`): SMTP
   implementatsioon, kui `spring.mail.host` on seatud, muidu logiv (arendus).
   `@ConfigurationProperties` `revkassa.mail.*` (from, reply-to), `revkassa.app-url` (linkide
   alus, arenduses `http://localhost:5173`) ja `revkassa.invoice.*` (org-name, iban,
   due-days = 14), valideeritakse käivitumisel, kui SMTP on sees.
+  Tehtud: `Mailer.send(MailMessage(to, subject, body))`; SMTP viga → `MailSendFailedException` (lühike
+  põhjus ilma sisu ja aadressita, arve saab selle salvestada). Seaded `RevkassaProperties` (`infrastructure/config/`).
+  SMTP ajalõpud 10 s. SMTP + `localhost` app-url → hoiatus logis. Keskkonnamuutujad: `SPRING_MAIL_HOST/_PORT/
+  _USERNAME/_PASSWORD`, `REVKASSA_APP_URL`, `REVKASSA_MAIL_FROM`, `REVKASSA_MAIL_REPLY_TO`,
+  `REVKASSA_INVOICE_ORG_NAME`, `REVKASSA_INVOICE_IBAN`, `REVKASSA_INVOICE_DUE_DAYS`.
   Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
 
 - [ ] **B36 · Parooli lingid** (M) — pärast B04, B25

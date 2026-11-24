@@ -37,7 +37,12 @@ Ilma `REVKASSA_PIN_SECRET`-ita rakendus ei käivitu (testid saavad selle failist
 `src/test/resources/config/application.properties`; IntelliJ Run Configuration'isse lisa
 `REVKASSA_PIN_SECRET=dev-pin-secret`). Käivita `bootRun` taustal ja oota, kuni `curl -s localhost:8080/actuator/health` tagastab
 `{"status":"UP"}`. Swagger UI: `http://localhost:8080/swagger-ui/index.html`. Peata see, kui oled valmis:
-`kill $(pgrep -f "[R]evkassaApplication")` — `[R]` hoiab ära, et muster leiaks ka käsurea enda shelli ja tapaks selle.
+`kill $(ps -C java -o pid=,args= | awk '/RevkassaApplication/{print $1}')`. Ära kasuta `pkill -f` / `pgrep -f`:
+muster leiab ka käsurea enda shelli (kui käsus on kuskil sama sõna) ja tapab selle.
+
+E-kirjad: ilma `SPRING_MAIL_HOST`-ita kirjutatakse kirjad logisse ("Email NOT sent ..."), sealt saab parooli
+lingi kopeerida. SMTP-ga peavad olema seatud `REVKASSA_MAIL_FROM`, `REVKASSA_INVOICE_ORG_NAME`,
+`REVKASSA_INVOICE_IBAN` (ja tootmises `REVKASSA_APP_URL`), muidu rakendus ei käivitu.
 
 Tühjas andmebaasis (pole aktiivset adminit) loob rakendus käivitumisel esimese admini, kui on seatud
 `REVKASSA_BOOTSTRAP_ADMIN_EMAIL`, `REVKASSA_BOOTSTRAP_ADMIN_PASSWORD` (≥ 10 märki) ja soovi korral `_NAME`;
