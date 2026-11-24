@@ -6,14 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.Base64;
-import java.util.HexFormat;
 import java.util.Optional;
-import java.util.random.RandomGenerator;
 
 /**
  * PIN login is allowed only on devices an admin has registered (the bar tablet). Such a device holds a random
@@ -27,18 +21,16 @@ public class DeviceService {
 
     // Browsers cap cookie lifetime at 400 days; every PIN login renews it (B04).
     private static final Duration DEVICE_COOKIE_MAX_AGE = Duration.ofDays(400);
-    private static final int TOKEN_BYTES = 32;
-    private static final String HASH_ALGORITHM = "SHA-256";
 
     private final TrustedDeviceRepository trustedDeviceRepository;
-    private final RandomGenerator randomGenerator;
+    private final TokenService tokenService;
     private final boolean secureCookies;
 
     public DeviceService(TrustedDeviceRepository trustedDeviceRepository,
-                         RandomGenerator randomGenerator,
+                         TokenService tokenService,
                          @Value("${revkassa.secure-cookies}") boolean secureCookies) {
         this.trustedDeviceRepository = trustedDeviceRepository;
-        this.randomGenerator = randomGenerator;
+        this.tokenService = tokenService;
         this.secureCookies = secureCookies;
     }
 
@@ -50,14 +42,11 @@ public class DeviceService {
     }
 
     public String createToken() {
-        byte[] bytes = new byte[TOKEN_BYTES];
-        randomGenerator.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return tokenService.createToken();
     }
 
     public String hash(String deviceToken) {
-        byte[] digest = sha256().digest(deviceToken.getBytes(StandardCharsets.UTF_8));
-        return HexFormat.of().formatHex(digest);
+        return tokenService.hash(deviceToken);
     }
 
     public ResponseCookie createDeviceCookie(String deviceToken) {
@@ -68,13 +57,5 @@ public class DeviceService {
                 .path("/")
                 .maxAge(DEVICE_COOKIE_MAX_AGE)
                 .build();
-    }
-
-    private static MessageDigest sha256() {
-        try {
-            return MessageDigest.getInstance(HASH_ALGORITHM);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("Device token hashing is not available", e);
-        }
     }
 }

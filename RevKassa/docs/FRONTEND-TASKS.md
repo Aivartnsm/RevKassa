@@ -93,6 +93,9 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   õnnestumisel "Parool määratud" + nupp "Logi sisse"; aegunud/kasutatud link → "Link on aegunud
   või juba kasutatud. Küsi uus link." lingiga `/forgot-password`. `ForgotPasswordView.vue`:
   e-post → alati "Kui see e-post on meil olemas, saatsime sellele lingi."
+  Veakoodid eesti keelde: 121 (link aegunud või kasutatud), 122 (429: liiga palju päringuid, proovi
+  hiljem), 103 `fieldErrors.password` (≥ 10 märki; liiga pikk). Admini "Saada kutse uuesti": 123 (e-kirja
+  ei õnnestunud saata, proovi uuesti).
   Valmis, kui: töötab 390px juures ja logiva saatjaga (link võetakse backendi logist).
 
 - [ ] **F31 · Admin: seadmed** (S) — vajab B38

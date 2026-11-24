@@ -4,6 +4,7 @@ import ee.revkassa.infrastructure.exception.DataNotFoundException;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.PrimaryKeyNotFoundException;
 import ee.revkassa.infrastructure.exception.TooManyAttemptsException;
+import ee.revkassa.infrastructure.mail.MailSendFailedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -56,7 +57,9 @@ public class RestExceptionHandler {
     @ExceptionHandler(TooManyAttemptsException.class)
     public ResponseEntity<ApiError> handleTooManyAttemptsException(TooManyAttemptsException exception) {
         ApiError apiError = createApiError(exception.getError());
-        apiError.setNextLockoutSeconds(Math.toIntExact(exception.getNextLockoutSeconds()));
+        if (exception.getNextLockoutSeconds() > 0) {
+            apiError.setNextLockoutSeconds(Math.toIntExact(exception.getNextLockoutSeconds()));
+        }
         return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
                 .body(apiError);
@@ -79,6 +82,13 @@ public class RestExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ApiError handleHttpMessageNotReadableException() {
         return createApiError(Error.INVALID_REQUEST);
+    }
+
+    // The mail server refused or did not answer; nothing was saved, the admin can try again
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    @ExceptionHandler(MailSendFailedException.class)
+    public ApiError handleMailSendFailedException() {
+        return createApiError(Error.EMAIL_NOT_SENT);
     }
 
     // e.g. /api/admin/devices/abc/revoke: a malformed id is the client's mistake, not a server error

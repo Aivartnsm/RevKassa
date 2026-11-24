@@ -2,7 +2,9 @@ package ee.revkassa.controller.auth;
 
 import ee.revkassa.controller.auth.dto.DeviceStatusDto;
 import ee.revkassa.controller.auth.dto.LoginRequestDto;
+import ee.revkassa.controller.auth.dto.PasswordResetRequestDto;
 import ee.revkassa.controller.auth.dto.PinLoginRequestDto;
+import ee.revkassa.controller.auth.dto.SetPasswordRequestDto;
 import ee.revkassa.controller.common.dto.MemberSessionDto;
 import ee.revkassa.infrastructure.error.ApiError;
 import ee.revkassa.infrastructure.security.DeviceService;
@@ -104,5 +106,47 @@ public class AuthController {
     })
     public void logout(HttpServletRequest request, HttpServletResponse response) {
         authService.logout(request, response);
+    }
+
+    @PostMapping("/password-reset")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "\"Forgot password?\": email a one-time link (valid 1 hour) to an active member",
+            description = "Always 204, whether or not the email belongs to a member, so it cannot be used to find members. "
+                    + "At most 5 requests per hour per IP and 5 emails per hour per address. Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Request received"),
+            @ApiResponse(responseCode = "400", description = "Email missing or malformed (errorCode 103)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "CSRF token missing (errorCode 118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "429", description = "Too many requests from this IP (122), Retry-After header "
+                    + "gives the seconds to wait",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public void requestPasswordReset(@RequestBody @Valid PasswordResetRequestDto passwordResetRequest,
+                                     HttpServletRequest request) {
+        authService.requestPasswordReset(passwordResetRequest.getEmail(), request);
+    }
+
+    @PostMapping("/set-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Set a password with the token from an invite or reset link",
+            description = "The link works once; all other open links of the member stop working too. Does not log in. "
+                    + "Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Password set"),
+            @ApiResponse(responseCode = "400", description = "Password shorter than 10 characters or longer than 72 bytes, "
+                    + "or token missing (errorCode 103)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Link unknown, used, expired or member not active (121), "
+                    + "or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public void setPassword(@RequestBody @Valid SetPasswordRequestDto setPasswordRequest) {
+        authService.setPassword(setPasswordRequest.getToken(), setPasswordRequest.getPassword());
     }
 }

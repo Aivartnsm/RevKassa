@@ -19,6 +19,10 @@ public class PasswordService {
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
+    public String encode(String rawPassword) {
+        return passwordEncoder.encode(rawPassword);
+    }
+
     /**
      * Without a stored hash (unknown email or password not set yet) a dummy hash is still checked, so the response
      * time does not reveal which emails exist.

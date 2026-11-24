@@ -5,16 +5,19 @@ import ee.revkassa.controller.auth.dto.LoginRequestDto;
 import ee.revkassa.controller.common.dto.MemberSessionDto;
 import ee.revkassa.infrastructure.error.Error;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
+import ee.revkassa.infrastructure.mail.MailSendFailedException;
 import ee.revkassa.infrastructure.security.DeviceService;
 import ee.revkassa.infrastructure.security.LockoutKey;
 import ee.revkassa.infrastructure.security.LoginLockoutService;
 import ee.revkassa.infrastructure.security.LoginMethodEnum;
 import ee.revkassa.infrastructure.security.LoginSessionService;
+import ee.revkassa.infrastructure.security.PasswordResetLimiter;
 import ee.revkassa.infrastructure.security.PasswordService;
 import ee.revkassa.infrastructure.security.PinService;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberMapper;
 import ee.revkassa.persistence.member.MemberRepository;
+import ee.revkassa.persistence.passwordtoken.PasswordTokenPurposeEnum;
 import ee.revkassa.persistence.trusteddevice.TrustedDevice;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,6 +46,8 @@ public class AuthService {
     private final PasswordService passwordService;
     private final LoginLockoutService loginLockoutService;
     private final LoginSessionService loginSessionService;
+    private final PasswordResetLimiter passwordResetLimiter;
+    private final PasswordLinkService passwordLinkService;
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
     private final Clock clock;
@@ -85,6 +90,29 @@ public class AuthService {
         loginSessionService.end(request, response);
     }
 
+    /**
+     * Always ends the same way for the caller (204), whether the email exists, is inactive, hit the per-address limit
+     * or the mail server failed: the answer must not reveal which emails belong to members.
+     * Not one transaction on purpose: a failed email must not turn into an error response.
+     */
+    public void requestPasswordReset(String email, HttpServletRequest request) {
+        passwordResetLimiter.acquireForIp(request.getRemoteAddr());
+        Optional<Member> member = memberRepository.findByEmail(email.strip());
+        if (member.isEmpty() || !member.get().getActive()) {
+            log.info("Password reset requested for no active member: ip={}", request.getRemoteAddr());
+            return;
+        }
+        if (!passwordResetLimiter.tryAcquireForEmail(member.get().getEmail())) {
+            log.warn("Password reset email limit reached: memberId={}, ip={}", member.get().getId(), request.getRemoteAddr());
+            return;
+        }
+        sendResetLink(member.get());
+    }
+
+    public void setPassword(String token, String newPassword) {
+        passwordLinkService.setPassword(token, newPassword);
+    }
+
     // Checked before the PIN: from an untrusted device PINs cannot be tried at all
     private TrustedDevice getTrustedDevice(String deviceToken, HttpServletRequest request) {
         Optional<TrustedDevice> device = deviceService.findTrusted(deviceToken);
@@ -113,6 +141,14 @@ public class AuthService {
             throw loginLockoutService.registerFailure(lockoutKey);
         }
         return member.get();
+    }
+
+    private void sendResetLink(Member member) {
+        try {
+            passwordLinkService.send(member, PasswordTokenPurposeEnum.RESET, null);
+        } catch (MailSendFailedException e) {
+            log.error("Password reset email failed: memberId={}, reason={}", member.getId(), e.getReason());
+        }
     }
 
     private static void validateActive(Member member) {

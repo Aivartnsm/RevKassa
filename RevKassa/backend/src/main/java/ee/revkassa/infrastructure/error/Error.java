@@ -22,6 +22,9 @@ public enum Error {
     ACCESS_DENIED("Access denied.", 118),
     DEVICE_ALREADY_REVOKED("Device is already revoked.", 119),
     DEVICE_ALREADY_TRUSTED("This device is already registered.", 120),
+    PASSWORD_LINK_INVALID("Password link is invalid or expired.", 121),
+    TOO_MANY_PASSWORD_RESETS("Too many password reset requests. Try again later.", 122),
+    EMAIL_NOT_SENT("Email could not be sent. Try again later.", 123),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

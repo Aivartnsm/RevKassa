@@ -100,7 +100,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `REVKASSA_INVOICE_ORG_NAME`, `REVKASSA_INVOICE_IBAN`, `REVKASSA_INVOICE_DUE_DAYS`.
   Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
 
-- [ ] **B36 · Parooli lingid** (M) — pärast B04, B25
+- [x] **B36 · Parooli lingid** (M) — pärast B04, B25
   `PasswordToken` entiteet (`persistence/passwordtoken/`). `PasswordLinkService.send(member,
   purpose, createdBy)`: tühistab liikme kehtivad lingid (`used_at = now`), loob tokeni
   (32 baiti, andmebaasi SHA-256), kehtivus `INVITE` 7 päeva / `RESET` 1 tund, saadab
@@ -111,6 +111,11 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   kasutatud link või mitteaktiivne liige → `ForbiddenException` (üks kood); salvestab bcrypt
   räsi, märgib lingi kasutatuks. Ei logi sisse. Tokenit ega parooli ei logita.
   `POST /api/admin/members/{id}/invite` → uus `INVITE` (B17 kutsub sama teenust liikme loomisel).
+  Tehtud: vigane link → 403 `121 PASSWORD_LINK_INVALID`; IP limiit → 429 `122` + `Retry-After`; lisaks
+  max 5 kirja tunnis sama aadressi kohta (vastus ikka 204, kirja ei saadeta). Parool ≥ 10 märki ja ≤ 72
+  baiti (bcrypt piir, `@MaxUtf8Bytes`). Kirja saatmise viga: kutse → 503 `123` ja midagi ei salvestata;
+  lähtestamine → ikka 204 (logis ERROR). Token ja räsi `TokenService`-ist (sama mis seadmeküpsisel).
+  Kutse teenus: `MemberService.sendInvite` (B17 kasutab `PasswordLinkService.send`-i liikme loomisel).
   Valmis, kui: võlts-`Mailer`-iga testid katavad kirja sisu ja lingi, aegumise (`Clock`),
   ühekordsuse, vana lingi tühistamise uue saatmisel, tundmatu e-posti (204, kirja pole), lühikese
   parooli ja selle, et pärast määramist töötab `POST /api/auth/login`.

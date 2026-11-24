@@ -4,8 +4,8 @@ import ee.revkassa.infrastructure.error.Error;
 import lombok.Getter;
 
 /**
- * Login is locked after too many wrong attempts (429). retryAfterSeconds goes to the Retry-After header,
- * nextLockoutSeconds tells the UI how long the next wrong attempt after this lockout will lock.
+ * Too many attempts or requests (429). retryAfterSeconds goes to the Retry-After header. For login lockouts
+ * nextLockoutSeconds tells the UI how long the next wrong attempt after this lockout will lock (0 = not a lockout).
  */
 @Getter
 public class TooManyAttemptsException extends RuntimeException {
@@ -19,5 +19,9 @@ public class TooManyAttemptsException extends RuntimeException {
         this.error = error;
         this.retryAfterSeconds = retryAfterSeconds;
         this.nextLockoutSeconds = nextLockoutSeconds;
+    }
+
+    public TooManyAttemptsException(Error error, long retryAfterSeconds) {
+        this(error, retryAfterSeconds, 0);
     }
 }
