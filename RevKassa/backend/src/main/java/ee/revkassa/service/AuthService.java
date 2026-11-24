@@ -6,6 +6,8 @@ import ee.revkassa.controller.common.dto.MemberSessionDto;
 import ee.revkassa.infrastructure.error.Error;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.security.DeviceService;
+import ee.revkassa.infrastructure.security.LockoutKey;
+import ee.revkassa.infrastructure.security.LoginLockoutService;
 import ee.revkassa.infrastructure.security.LoginMethodEnum;
 import ee.revkassa.infrastructure.security.LoginSessionService;
 import ee.revkassa.infrastructure.security.PasswordService;
@@ -28,7 +30,8 @@ import java.util.Optional;
 
 /**
  * Login rules: PIN only on a trusted device (member session, 1 min), email + password anywhere (30 min, admin rights
- * for ADMIN). PINs, passwords and device tokens are never logged; log lines carry ids and the client IP only.
+ * for ADMIN). Wrong attempts are limited per device (PIN) and per client IP (password), see LoginLockoutService.
+ * PINs, passwords and device tokens are never logged; log lines carry ids and the client IP only.
  */
 @Slf4j
 @Service
@@ -38,6 +41,7 @@ public class AuthService {
     private final DeviceService deviceService;
     private final PinService pinService;
     private final PasswordService passwordService;
+    private final LoginLockoutService loginLockoutService;
     private final LoginSessionService loginSessionService;
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
@@ -53,8 +57,11 @@ public class AuthService {
     public MemberSessionDto loginWithPin(String pin, String deviceToken,
                                          HttpServletRequest request, HttpServletResponse response) {
         TrustedDevice device = getTrustedDevice(deviceToken, request);
-        Member member = getMemberByPin(pin, device, request);
+        LockoutKey lockoutKey = LockoutKey.forDevice(device.getId());
+        loginLockoutService.ensureNotLocked(lockoutKey);
+        Member member = getMemberByPin(pin, device, lockoutKey, request);
         validateActive(member);
+        loginLockoutService.registerSuccess(lockoutKey);
         markDeviceUsed(device, deviceToken, response);
         loginSessionService.start(member, LoginMethodEnum.PIN, request, response);
         log.info("PIN login: memberId={}, deviceId={}, ip={}", member.getId(), device.getId(), request.getRemoteAddr());
@@ -64,8 +71,11 @@ public class AuthService {
     @Transactional(readOnly = true)
     public MemberSessionDto loginWithPassword(LoginRequestDto loginRequest,
                                               HttpServletRequest request, HttpServletResponse response) {
-        Member member = getMemberByCredentials(loginRequest, request);
+        LockoutKey lockoutKey = LockoutKey.forIp(request.getRemoteAddr());
+        loginLockoutService.ensureNotLocked(lockoutKey);
+        Member member = getMemberByCredentials(loginRequest, lockoutKey, request);
         validateActive(member);
+        loginLockoutService.registerSuccess(lockoutKey);
         loginSessionService.start(member, LoginMethodEnum.PASSWORD, request, response);
         log.info("Password login: memberId={}, ip={}", member.getId(), request.getRemoteAddr());
         return memberMapper.toMemberSessionDto(member, LoginMethodEnum.PASSWORD);
@@ -85,22 +95,22 @@ public class AuthService {
         return device.get();
     }
 
-    private Member getMemberByPin(String pin, TrustedDevice device, HttpServletRequest request) {
+    private Member getMemberByPin(String pin, TrustedDevice device, LockoutKey lockoutKey, HttpServletRequest request) {
         Optional<Member> member = pinService.findByPin(pin);
         if (member.isEmpty()) {
             log.warn("Wrong PIN: deviceId={}, ip={}", device.getId(), request.getRemoteAddr());
-            throw new ForbiddenException(Error.WRONG_PIN);
+            throw loginLockoutService.registerFailure(lockoutKey);
         }
         return member.get();
     }
 
     // Unknown email, password not set yet and wrong password give the same answer: it must not reveal which emails exist
-    private Member getMemberByCredentials(LoginRequestDto loginRequest, HttpServletRequest request) {
+    private Member getMemberByCredentials(LoginRequestDto loginRequest, LockoutKey lockoutKey, HttpServletRequest request) {
         Optional<Member> member = memberRepository.findByEmail(loginRequest.getEmail());
         String passwordHash = member.map(Member::getPasswordHash).orElse(null);
         if (!passwordService.matches(loginRequest.getPassword(), passwordHash)) {
             log.warn("Password login failed: ip={}", request.getRemoteAddr());
-            throw new ForbiddenException(Error.WRONG_EMAIL_OR_PASSWORD);
+            throw loginLockoutService.registerFailure(lockoutKey);
         }
         return member.get();
     }

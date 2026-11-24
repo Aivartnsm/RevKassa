@@ -14,10 +14,14 @@ public enum Error {
     DATA_HAS_CHANGED_RELOAD_REQUIRED("Oops, someone has changed the data, try reloading the page", 105),
     WRONG_PIN("Wrong PIN.", 111),
     ACCOUNT_NOT_ACTIVE("Account is not active.", 112),
+    TOO_MANY_WRONG_PINS("Too many wrong PINs. Try again later.", 113),
     WRONG_EMAIL_OR_PASSWORD("Wrong email or password.", 114),
     SESSION_MISSING("Session expired or missing.", 115),
     DEVICE_NOT_TRUSTED("PIN login is only allowed on a registered device.", 116),
+    TOO_MANY_FAILED_LOGINS("Too many failed logins. Try again later.", 117),
     ACCESS_DENIED("Access denied.", 118),
+    DEVICE_ALREADY_REVOKED("Device is already revoked.", 119),
+    DEVICE_ALREADY_TRUSTED("This device is already registered.", 120),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

@@ -3,8 +3,11 @@ package ee.revkassa.infrastructure.error;
 import ee.revkassa.infrastructure.exception.DataNotFoundException;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.PrimaryKeyNotFoundException;
+import ee.revkassa.infrastructure.exception.TooManyAttemptsException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
@@ -44,7 +48,18 @@ public class RestExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     @ExceptionHandler(ForbiddenException.class)
     public ApiError handleForbiddenException(ForbiddenException exception) {
-        return createApiError(exception.getError());
+        ApiError apiError = createApiError(exception.getError());
+        apiError.setRemainingAttempts(exception.getRemainingAttempts());
+        return apiError;
+    }
+
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ResponseEntity<ApiError> handleTooManyAttemptsException(TooManyAttemptsException exception) {
+        ApiError apiError = createApiError(exception.getError());
+        apiError.setNextLockoutSeconds(Math.toIntExact(exception.getNextLockoutSeconds()));
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(exception.getRetryAfterSeconds()))
+                .body(apiError);
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -63,6 +78,13 @@ public class RestExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ApiError handleHttpMessageNotReadableException() {
+        return createApiError(Error.INVALID_REQUEST);
+    }
+
+    // e.g. /api/admin/devices/abc/revoke: a malformed id is the client's mistake, not a server error
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ApiError handleMethodArgumentTypeMismatchException() {
         return createApiError(Error.INVALID_REQUEST);
     }
 

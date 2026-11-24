@@ -132,6 +132,6 @@ Märkused:
 - [x] Puuduv / tühi / vale kujuga sisend → 400 `ApiError`-iga.
 - [x] Tundmatu e-post, määramata parooliga liige ja vale parool → sama 403 vastus, sessiooni ei looda.
 - [x] Mitteaktiivne liige → 403, sessiooni ei looda.
-- [ ] 5. vale katse samalt IP-lt → 429 (B05); teise IP katsed ei ole mõjutatud; PIN-i loendur ei muutu.
+- [x] 5. vale katse samalt IP-lt → 429 (B05); teise IP katsed ei ole mõjutatud; PIN-i loendur ei muutu.
 - [x] Parool ega selle räsi ei ole üheski logireas ega vastuses.
-- [ ] MockMvc testid katavad õnnestumise (liige ja admin), valed andmed, määramata parooli, mitteaktiivse liikme, lukustuse ja sessiooni aegumise; `@SpringBootTest` päris Postgresi vastu bcrypt räsiga liikmega.
+- [x] MockMvc testid katavad õnnestumise (liige ja admin), valed andmed, määramata parooli, mitteaktiivse liikme, lukustuse ja sessiooni aegumise; `@SpringBootTest` päris Postgresi vastu bcrypt räsiga liikmega.

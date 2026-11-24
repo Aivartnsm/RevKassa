@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,7 +41,28 @@ public class RestExceptionHandlerTest {
         mockMvc.perform(get("/test/forbidden"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value(Error.INVALID_REQUEST.getMessage()))
-                .andExpect(jsonPath("$.errorCode").value(Error.INVALID_REQUEST.getErrorCode()));
+                .andExpect(jsonPath("$.errorCode").value(Error.INVALID_REQUEST.getErrorCode()))
+                .andExpect(jsonPath("$.remainingAttempts").doesNotExist())
+                .andExpect(jsonPath("$.nextLockoutSeconds").doesNotExist());
+    }
+
+    @Test
+    void forbiddenWithRemainingAttemptsTest() throws Exception {
+        mockMvc.perform(get("/test/forbidden-with-remaining-attempts"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(Error.WRONG_PIN.getErrorCode()))
+                .andExpect(jsonPath("$.remainingAttempts").value(3));
+    }
+
+    @Test
+    void tooManyAttemptsTest() throws Exception {
+        mockMvc.perform(get("/test/too-many-attempts"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "42"))
+                .andExpect(jsonPath("$.message").value(Error.TOO_MANY_WRONG_PINS.getMessage()))
+                .andExpect(jsonPath("$.errorCode").value(113))
+                .andExpect(jsonPath("$.nextLockoutSeconds").value(600))
+                .andExpect(jsonPath("$.remainingAttempts").doesNotExist());
     }
 
     @Test
@@ -81,6 +103,14 @@ public class RestExceptionHandlerTest {
                                 { "username": " 32412 SQL /&"
                                 """
                         ))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(Error.INVALID_REQUEST.getMessage()))
+                .andExpect(jsonPath("$.errorCode").value(Error.INVALID_REQUEST.getErrorCode()));
+    }
+
+    @Test
+    void malformedPathIdTest() throws Exception {
+        mockMvc.perform(get("/test/path-id/abc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(Error.INVALID_REQUEST.getMessage()))
                 .andExpect(jsonPath("$.errorCode").value(Error.INVALID_REQUEST.getErrorCode()));

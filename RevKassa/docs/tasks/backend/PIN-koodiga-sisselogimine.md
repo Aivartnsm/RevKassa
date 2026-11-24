@@ -145,7 +145,7 @@ keeles (arendajale ja logidele); UI näitab kasutajale eestikeelset teksti `erro
 | `pin` puudub, ei ole string või ei ole täpselt 6 numbrit. Lukustuse loendurisse ei lähe (PIN-i ei kontrollita). | 400 Bad Request | `{ "message": "Validate fields", "errorCode": 103, "fieldErrors": { "pin": "PIN must be exactly 6 digits" } }` (B02 üldine valideerimisviga) | PIN-kood peab olema täpselt 6 numbrit. |
 | CSRF token puudub või on vale | 403 Forbidden | `{ "message": "Access denied.", "errorCode": 118 }` (`SecurityErrorHandler`) | Midagi läks valesti. Värskenda lehte. |
 | Seadmeküpsis puudub, on tundmatu või seade on tühistatud. PIN-i ei kontrollita, loendurisse ei lähe. | 403 Forbidden | `{ "message": "PIN login is only allowed on a registered device.", "errorCode": 116 }` | Selles seadmes saab sisse logida ainult e-posti ja parooliga. |
-| Vale PIN, lukustuseni on katseid jäänud (1.–4. viga järjest) | 403 Forbidden | `{ "message": "Wrong PIN. 4 attempts left before lockout.", "errorCode": 111, "remainingAttempts": 4 }` (arv väheneb: 4 → 1) | Vale PIN-kood. Veel N katset enne lukustust. (N = `remainingAttempts`; 1 → "Veel 1 katse") |
+| Vale PIN, lukustuseni on katseid jäänud (1.–4. viga järjest) | 403 Forbidden | `{ "message": "Wrong PIN.", "errorCode": 111, "remainingAttempts": 4 }` (arv väheneb: 4 → 1) | Vale PIN-kood. Veel N katset enne lukustust. (N = `remainingAttempts`; 1 → "Veel 1 katse") |
 | PIN on õige, aga liige on mitteaktiivne (`active = false`). Loendurisse ei lähe. | 403 Forbidden | `{ "message": "Account is not active.", "errorCode": 112 }` | Konto ei ole aktiivne. Võta ühendust adminiga. |
 | Vale PIN käivitab lukustuse: 5. viga järjest (1 min) või iga vale PIN pärast eelmise lukustuse lõppu (5 min → 10 min → 30 min → 1 h → 1 päev, edasi 1 päev) | 429 Too Many Requests, päis `Retry-After: <sekundid>` | `{ "message": "Too many wrong PINs. Try again later.", "errorCode": 113, "nextLockoutSeconds": 300 }` | Liiga palju valesid PIN-koode. Proovi uuesti hiljem. |
 | Päring lukustuse ajal (ka õige PIN-iga). PIN-i ei kontrollita, lukustust ei pikendata. | 429 Too Many Requests, `Retry-After: <järelejäänud sekundid>` | `{ "message": "Too many wrong PINs. Try again later.", "errorCode": 113, "nextLockoutSeconds": 300 }` | Liiga palju valesid PIN-koode. Proovi uuesti hiljem. |
@@ -180,14 +180,14 @@ B04 — sisselogimine:
 - [x] PIN-i ei ole üheski logireas ega vastuses.
 
 B05 — lukustus (fikseeritud `Clock`-iga):
-- [ ] 1.–4. vale PIN → 403 koodiga 111 ja `remainingAttempts` 4 → 1.
-- [ ] 5. vale PIN → 429, `Retry-After: 60`, `nextLockoutSeconds: 300`.
-- [ ] Pärast lukustuse lõppu lukustab iga järgmine vale PIN kohe: 300 → 600 → 1800 → 3600 → 86400 s; edasi jääb 86400. `nextLockoutSeconds` näitab alati järgmist taset (lael 86400).
-- [ ] Päring lukustuse ajal (ka õige PIN-iga) → 429 järelejäänud ajaga; PIN-i ei kontrollita ja lukustus ei pikene.
-- [ ] Õnnestunud sisselogimine nullib loenduri ja taseme (järgmise vea järel on jälle 4 katset).
-- [ ] Lukustus on seadme kaupa: teise usaldatud seadme päringud ei ole mõjutatud.
-- [ ] Ebaõnnestumised, lukustused ja õnnestunud sisselogimised logitakse ilma PIN-ita.
+- [x] 1.–4. vale PIN → 403 koodiga 111 ja `remainingAttempts` 4 → 1.
+- [x] 5. vale PIN → 429, `Retry-After: 60`, `nextLockoutSeconds: 300`.
+- [x] Pärast lukustuse lõppu lukustab iga järgmine vale PIN kohe: 300 → 600 → 1800 → 3600 → 86400 s; edasi jääb 86400. `nextLockoutSeconds` näitab alati järgmist taset (lael 86400).
+- [x] Päring lukustuse ajal (ka õige PIN-iga) → 429 järelejäänud ajaga; PIN-i ei kontrollita ja lukustus ei pikene.
+- [x] Õnnestunud sisselogimine nullib loenduri ja taseme (järgmise vea järel on jälle 4 katset).
+- [x] Lukustus on seadme kaupa: teise usaldatud seadme päringud ei ole mõjutatud.
+- [x] Ebaõnnestumised, lukustused ja õnnestunud sisselogimised logitakse ilma PIN-ita.
 
 Testid:
-- [ ] `@WebMvcTest` + MockMvc: valideerimine, staatuskoodid, `ApiError` keha (k.a `remainingAttempts` / `nextLockoutSeconds`, mis teistes vastustes puuduvad) ja `Retry-After` päis.
-- [ ] `@SpringBootTest` (päris Postgres, `@Transactional`): õnnestunud sisselogimine, usaldamata / tühistatud seade, vale PIN, mitteaktiivne liige, lukustuse tasemed `Clock`-iga.
+- [x] `@WebMvcTest` + MockMvc: valideerimine, staatuskoodid, `ApiError` keha (k.a `remainingAttempts` / `nextLockoutSeconds`, mis teistes vastustes puuduvad) ja `Retry-After` päis.
+- [x] `@SpringBootTest` (päris Postgres, `@Transactional`): õnnestunud sisselogimine, usaldamata / tühistatud seade, vale PIN, mitteaktiivne liige, lukustuse tasemed `Clock`-iga.

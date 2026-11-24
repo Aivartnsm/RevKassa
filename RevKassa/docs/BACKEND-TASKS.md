@@ -54,7 +54,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `/api/admin/**` all, tavaliikme parooliga sessiooni keelu `/api/admin/**` all ja
   mitteaktiivse liikme keelu.
 
-- [ ] **B05 · Jõurünnaku lukustus** (S) — pärast B04
+- [x] **B05 · Jõurünnaku lukustus** (S) — pärast B04
   PIN: **seadme kaupa** (`trusted_device.id`). Parool: **kliendi IP kaupa**, eraldi loendur.
   Mõlemal: pärast 5 valet katset lukusta 1 minutiks; pärast seda lukustab iga järgmine
   vale katse uuesti, tasemed 5 min → 10 min → 30 min → 1 h → 1 päev (edasi 1 päev). Õnnestumisel
@@ -67,10 +67,14 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   taseme pikkuse, 1 päeva lae, lukustuse ajal tehtud katse (ei pikenda ega kontrolli) ja
   nullimise õnnestumisel; teise seadme / teise IP katsed ei ole mõjutatud.
 
-- [ ] **B06 · Esimese admini loomine** (S) — pärast B03
+- [x] **B06 · Esimese admini loomine** (S) — pärast B03
   Käivitumisel, kui ühtegi adminit pole, loo üks seadetest `revkassa.bootstrap.admin-email`,
   `-password`, `-name` (keskkonnamuutujad) ja logi selle genereeritud PIN üks kord.
   SQL skriptides paroole pole. Esimene admin logib sisse parooliga ja registreerib tahvli (B38).
+  Tehtud (`service/AdminBootstrapService`): keskkonnamuutujad `REVKASSA_BOOTSTRAP_ADMIN_EMAIL`,
+  `_PASSWORD`, `_NAME` (nimi vaikimisi "Admin"). "Adminit pole" = pole ühtegi **aktiivset** ADMIN-i.
+  Seadeteta hoiatus logis; vigased seaded (pole e-post, parool < 10 märki, e-post kuulub juba liikmele)
+  peatavad käivitumise. Tase = esimene aktiivne. Parooli ei logita; PIN logitakse ainult see üks kord.
   Valmis, kui: test näitab, et see jookseb üks kord ja jäetakse vahele, kui admin on olemas.
 
 - [x] **B35 · Usaldatud seadmed: mehhanism** (M) — pärast B03; B04 kasutab
@@ -112,12 +116,16 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   lihtsus). Parooli ei logita.
   Valmis, kui: õnnestumine (vana parool ei tööta, uus töötab), vale praegune, lühike uus on testitud.
 
-- [ ] **B38 · Admin: seadmete haldus** (S) — pärast B04, B35
+- [x] **B38 · Admin: seadmete haldus** (S) — pärast B04, B35
   (Eraldatud B35-st: vajab B04 admini sessiooni, et teada `created_by` / `revoked_by` ja kaitsta `/api/admin/**`.)
   `POST /api/admin/devices` `{name}` (parooliga admini sessioon) loob seadme (`DeviceService.createToken()`,
   andmebaasi räsi) ja paneb **sellele** brauserile küpsise `createDeviceCookie()` kaudu.
   `GET /api/admin/devices` (nimi, registreeritud, kes, viimati kasutatud, tühistatud),
   `POST /api/admin/devices/{id}/revoke` (juba tühistatud → `ForbiddenException`).
+  Tehtud: 403 `119 DEVICE_ALREADY_REVOKED`; brauser, mis on juba usaldatud seade, ei saa end uuesti
+  registreerida (403 `120 DEVICE_ALREADY_TRUSTED`) — muidu jääks vana rida kehtima ilma omanikuta.
+  Tundmatu id → 404 `101`, vigane id (`/abc/`) → 400 `104`. Vastus (`DeviceDto`): id, name, createdAt,
+  createdByName, lastUsedAt, revokedAt, revokedByName — tokenit ega räsi ei tagastata.
   Valmis, kui: testid katavad registreerimise (küpsis + räsi baasis, mitte token), nimekirja,
   tühistamise, topelt-tühistamise ja selle, et tavaliige ega PIN-sessioon ei saa seadet registreerida.
 

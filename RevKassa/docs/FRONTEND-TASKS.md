@@ -99,6 +99,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Admini menüüpunkt "Seadmed": nimekiri (nimi, registreeritud, viimati kasutatud, Tühistatud),
   "Tühista" kinnitusega; nupp "Registreeri see seade baaritahvliks" (nimi) — näidatakse, kui see
   seade pole veel usaldatud, selgitusega, et pärast seda saab siin PIN-iga sisse logida.
+  Usaldatud olek tuleb `GET /api/auth/device`-ist. Veakoodid eesti keelde: 119 (seade on juba
+  tühistatud), 120 (see seade on juba registreeritud).
 
 ## Verstapost 2 — Admin: tooted ja ladu
 

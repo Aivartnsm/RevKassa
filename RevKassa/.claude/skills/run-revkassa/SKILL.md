@@ -36,7 +36,12 @@ REVKASSA_PIN_SECRET=dev-pin-secret JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 
 Ilma `REVKASSA_PIN_SECRET`-ita rakendus ei käivitu (testid saavad selle failist
 `src/test/resources/config/application.properties`; IntelliJ Run Configuration'isse lisa
 `REVKASSA_PIN_SECRET=dev-pin-secret`). Käivita `bootRun` taustal ja oota, kuni `curl -s localhost:8080/actuator/health` tagastab
-`{"status":"UP"}`. Swagger UI: `http://localhost:8080/swagger-ui/index.html`. Peata see, kui oled valmis.
+`{"status":"UP"}`. Swagger UI: `http://localhost:8080/swagger-ui/index.html`. Peata see, kui oled valmis:
+`kill $(pgrep -f "[R]evkassaApplication")` — `[R]` hoiab ära, et muster leiaks ka käsurea enda shelli ja tapaks selle.
+
+Tühjas andmebaasis (pole aktiivset adminit) loob rakendus käivitumisel esimese admini, kui on seatud
+`REVKASSA_BOOTSTRAP_ADMIN_EMAIL`, `REVKASSA_BOOTSTRAP_ADMIN_PASSWORD` (≥ 10 märki) ja soovi korral `_NAME`;
+selle PIN on logis üks kord ("First admin created"). Arenduse andmetes on adminid olemas, seal see ei käivitu.
 
 ## 3. Frontend
 ```bash

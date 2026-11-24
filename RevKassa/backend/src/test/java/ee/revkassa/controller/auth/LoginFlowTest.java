@@ -19,7 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.not;
@@ -27,6 +30,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,9 +59,13 @@ class LoginFlowTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    // Lockouts live in memory for the whole test run, so every test logs in from its own IP
+    private static final AtomicInteger IP_COUNTER = new AtomicInteger();
+
     private Member member;
     private Member admin;
     private TrustedDevice tablet;
+    private String clientIp;
 
     @BeforeEach
     void createMembersAndTablet() {
@@ -68,6 +76,7 @@ class LoginFlowTest {
         admin.setPasswordHash(passwordEncoder.encode(PASSWORD));
         admin.setRole(MemberRoleEnum.ADMIN);
         tablet = testData.trustedDevice("Flow tahvel", deviceService.hash("flow-tablet-token"), admin);
+        clientIp = "10.77.0." + IP_COUNTER.incrementAndGet();
     }
 
     // ---- PIN ----
@@ -130,6 +139,7 @@ class LoginFlowTest {
         MvcResult result = loginWithPin("799999", "flow-tablet-token")
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value(111))
+                .andExpect(jsonPath("$.remainingAttempts").value(4))
                 .andReturn();
 
         assertThat(result.getRequest().getSession(false)).isNull();
@@ -193,6 +203,60 @@ class LoginFlowTest {
                 .andExpect(jsonPath("$.errorCode").value(118));
         mockMvc.perform(get("/api/me").session(session))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void pinLogin_fifthWrongPin_locksDeviceWith429() throws Exception {
+        wrongPinTimes(4).andExpect(jsonPath("$.remainingAttempts").value(1));
+
+        loginWithPin("799999", "flow-tablet-token")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "60"))
+                .andExpect(jsonPath("$.errorCode").value(113))
+                .andExpect(jsonPath("$.nextLockoutSeconds").value(300))
+                .andExpect(jsonPath("$.remainingAttempts").doesNotExist());
+    }
+
+    @Test
+    void pinLogin_whileLocked_rejectsEvenCorrectPin() throws Exception {
+        wrongPinTimes(5);
+
+        MvcResult result = loginWithPin("700001", "flow-tablet-token")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.errorCode").value(113))
+                .andReturn();
+
+        assertThat(result.getRequest().getSession(false)).isNull();
+    }
+
+    @Test
+    void pinLockout_doesNotAffectOtherDevice() throws Exception {
+        testData.trustedDevice("Teine tahvel", deviceService.hash("flow-second-tablet"), admin);
+        wrongPinTimes(5);
+
+        loginWithPin("700001", "flow-second-tablet")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void pinLogin_success_resetsAttempts() throws Exception {
+        wrongPinTimes(3);
+        loginWithPin("700001", "flow-tablet-token").andExpect(status().isOk());
+
+        loginWithPin("799999", "flow-tablet-token")
+                .andExpect(jsonPath("$.remainingAttempts").value(4));
+    }
+
+    @Test
+    void pinLogin_inactiveMemberAndUntrustedDevice_doNotCountAsWrongPins() throws Exception {
+        member.setActive(false);
+        for (int i = 0; i < 5; i++) {
+            loginWithPin("700001", "flow-tablet-token").andExpect(jsonPath("$.errorCode").value(112));
+            loginWithPin("799999", "made-up-token").andExpect(jsonPath("$.errorCode").value(116));
+        }
+
+        loginWithPin("799999", "flow-tablet-token")
+                .andExpect(jsonPath("$.remainingAttempts").value(4));
     }
 
     // ---- password ----
@@ -282,6 +346,32 @@ class LoginFlowTest {
         loginWithPassword("flow-member@example.org", "ä".repeat(100))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.errorCode").value(114));
+    }
+
+    @Test
+    void passwordLogin_fifthFailureFromSameIp_returns429() throws Exception {
+        for (int i = 0; i < 4; i++) {
+            loginWithPassword("nobody@example.org", PASSWORD).andExpect(status().isForbidden());
+        }
+
+        loginWithPassword("flow-member@example.org", "wrong-password")
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "60"))
+                .andExpect(jsonPath("$.errorCode").value(117))
+                .andExpect(jsonPath("$.nextLockoutSeconds").value(300));
+        loginWithPassword("flow-member@example.org", PASSWORD)
+                .andExpect(status().isTooManyRequests());
+    }
+
+    @Test
+    void passwordLockout_doesNotAffectOtherIpOrPinLogin() throws Exception {
+        for (int i = 0; i < 5; i++) {
+            loginWithPassword("flow-member@example.org", "wrong-password");
+        }
+        clientIp = clientIp + "0";
+
+        loginWithPassword("flow-member@example.org", PASSWORD).andExpect(status().isOk());
+        loginWithPin("700001", "flow-tablet-token").andExpect(status().isOk());
     }
 
     // ---- /api/me ----
@@ -390,9 +480,24 @@ class LoginFlowTest {
     }
 
     private ResultActions loginWithPassword(String email, String password) throws Exception {
-        return mockMvc.perform(post("/api/auth/login").with(csrf())
+        return mockMvc.perform(post("/api/auth/login").with(csrf()).with(fromIp(clientIp))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"));
+    }
+
+    private ResultActions wrongPinTimes(int times) throws Exception {
+        ResultActions last = null;
+        for (int i = 0; i < times; i++) {
+            last = loginWithPin("799999", "flow-tablet-token");
+        }
+        return last;
+    }
+
+    private static RequestPostProcessor fromIp(String ip) {
+        return request -> {
+            request.setRemoteAddr(ip);
+            return request;
+        };
     }
 
     private static MockHttpSession sessionOf(MvcResult result) {

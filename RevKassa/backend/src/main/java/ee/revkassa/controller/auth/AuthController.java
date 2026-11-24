@@ -54,8 +54,11 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Logged in, new session cookie set"),
             @ApiResponse(responseCode = "400", description = "PIN is not exactly 6 digits (errorCode 103)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "403", description = "Device not trusted (116), wrong PIN (111), "
+            @ApiResponse(responseCode = "403", description = "Device not trusted (116), wrong PIN (111, with remainingAttempts), "
                     + "member not active (112) or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "429", description = "Too many wrong PINs on this device (113): Retry-After header "
+                    + "gives the seconds left, nextLockoutSeconds how long the next wrong PIN will lock",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
             @ApiResponse(responseCode = "500", description = "Unexpected server error",
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
@@ -74,8 +77,11 @@ public class AuthController {
             @ApiResponse(responseCode = "200", description = "Logged in, new session cookie set"),
             @ApiResponse(responseCode = "400", description = "Email or password missing, or email malformed (errorCode 103)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "403", description = "Wrong email or password, or password not set (114), "
-                    + "member not active (112) or CSRF token missing (118)",
+            @ApiResponse(responseCode = "403", description = "Wrong email or password, or password not set (114, with "
+                    + "remainingAttempts), member not active (112) or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "429", description = "Too many failed logins from this IP (117): Retry-After header "
+                    + "gives the seconds left, nextLockoutSeconds how long the next failure will lock",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
             @ApiResponse(responseCode = "500", description = "Unexpected server error",
                     content = @Content(schema = @Schema(implementation = ApiError.class)))
