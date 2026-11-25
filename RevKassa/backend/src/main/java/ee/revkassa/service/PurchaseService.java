@@ -1,5 +1,7 @@
 package ee.revkassa.service;
 
+import ee.revkassa.controller.admin.member.dto.MemberPurchaseDto;
+import ee.revkassa.controller.admin.member.dto.MemberPurchasePageDto;
 import ee.revkassa.controller.purchase.dto.PurchaseCreateRequestDto;
 import ee.revkassa.controller.purchase.dto.PurchaseDto;
 import ee.revkassa.controller.purchase.dto.PurchaseLineRequestDto;
@@ -14,6 +16,7 @@ import ee.revkassa.persistence.member.MemberRoleEnum;
 import ee.revkassa.persistence.product.Product;
 import ee.revkassa.persistence.product.ProductRepository;
 import ee.revkassa.persistence.purchase.Purchase;
+import ee.revkassa.persistence.purchase.PurchaseMapper;
 import ee.revkassa.persistence.purchase.PurchaseRepository;
 import ee.revkassa.persistence.purchase.PurchaseStatusEnum;
 import ee.revkassa.persistence.purchaseline.PurchaseLine;
@@ -21,6 +24,8 @@ import ee.revkassa.persistence.purchaseline.PurchaseLineMapper;
 import ee.revkassa.persistence.purchaseline.PurchaseLineRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,8 +56,10 @@ import java.util.stream.Collectors;
 public class PurchaseService {
 
     public static final Duration UNDO_WINDOW = Duration.ofMinutes(10);
+    public static final int MEMBER_PURCHASES_PAGE_SIZE = 20;
 
     private final PurchaseRepository purchaseRepository;
+    private final PurchaseMapper purchaseMapper;
     private final PurchaseLineRepository purchaseLineRepository;
     private final PurchaseLineMapper purchaseLineMapper;
     private final ProductRepository productRepository;
@@ -102,6 +109,21 @@ public class PurchaseService {
         long balanceCents = accountService.post(AccountPosting.purchaseReversal(owner, purchase, actor));
         log.info("Purchase undone: purchaseId={}, memberId={}, reversedBy={}", purchaseId, owner.getId(), actor.getId());
         return toPurchaseDto(purchase, lines, balanceCents);
+    }
+
+    /**
+     * For the admin: one member's purchases newest first, undone ones included, with their lines.
+     */
+    @Transactional(readOnly = true)
+    public MemberPurchasePageDto getMemberPurchases(Long memberId, int page) {
+        validateMemberExists(memberId);
+        Slice<Purchase> purchases = purchaseRepository.findMemberPurchases(memberId,
+                PageRequest.of(page, MEMBER_PURCHASES_PAGE_SIZE));
+        Map<Long, List<PurchaseLine>> linesByPurchaseId = getLinesOf(purchases.getContent());
+        List<MemberPurchaseDto> dtos = purchases.getContent().stream()
+                .map(purchase -> toMemberPurchaseDto(purchase, linesByPurchaseId.getOrDefault(purchase.getId(), List.of())))
+                .toList();
+        return new MemberPurchasePageDto(dtos, page, purchases.hasNext());
     }
 
     private Long getValidOwnerIdBy(Long purchaseId) {
@@ -232,6 +254,28 @@ public class PurchaseService {
         line.setQuantity(quantity);
         line.setUnitPriceCents(product.getPriceCents());
         return line;
+    }
+
+    private void validateMemberExists(Long memberId) {
+        if (!memberRepository.existsById(memberId)) {
+            throw new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND);
+        }
+    }
+
+    // All lines of the page in one query
+    private Map<Long, List<PurchaseLine>> getLinesOf(List<Purchase> purchases) {
+        if (purchases.isEmpty()) {
+            return Map.of();
+        }
+        List<Long> purchaseIds = purchases.stream().map(Purchase::getId).toList();
+        return purchaseLineRepository.findAllByPurchaseIds(purchaseIds).stream()
+                .collect(Collectors.groupingBy(line -> line.getPurchase().getId()));
+    }
+
+    private MemberPurchaseDto toMemberPurchaseDto(Purchase purchase, List<PurchaseLine> lines) {
+        MemberPurchaseDto dto = purchaseMapper.toMemberPurchaseDto(purchase);
+        dto.setLines(purchaseLineMapper.toPurchaseLineDtos(lines));
+        return dto;
     }
 
     private PurchaseDto toPurchaseDto(Purchase purchase, List<PurchaseLine> lines, long balanceCents) {

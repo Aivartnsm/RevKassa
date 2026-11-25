@@ -29,6 +29,18 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("select m from Member m where m.role = ee.revkassa.persistence.member.MemberRoleEnum.ADMIN and m.active = true order by m.id")
     List<Member> findActiveAdmins();
 
+    @Query("select (count(m) > 0) from Member m where m.id = :id and m.role = ee.revkassa.persistence.member.MemberRoleEnum.ADMIN and m.active = true")
+    boolean isActiveAdmin(Long id);
+
+    // Row locks in id order: two admins removing each other's admin rights at once run one after the other,
+    // so the second one sees the first and the last active admin always stays
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from Member m where m.role = ee.revkassa.persistence.member.MemberRoleEnum.ADMIN and m.active = true order by m.id")
+    List<Member> findActiveAdminsForUpdate();
+
+    @Query("select m from Member m order by lower(m.displayName), m.id")
+    List<Member> findAllMembers();
+
     // Row lock: one member's purchases run one after another (same request twice cannot both pass the check).
     // Lock order everywhere: member first, then products in id order
     @Lock(LockModeType.PESSIMISTIC_WRITE)

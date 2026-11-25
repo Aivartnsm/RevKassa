@@ -34,6 +34,8 @@ public enum Error {
     UNKNOWN_PRODUCT("A product does not exist.", 130),
     PAYMENT_DETAILS_NOT_SET("Payment details have not been set up yet.", 131),
     PAYMENT_ALREADY_DECIDED("This payment has already been confirmed or rejected.", 132),
+    EMAIL_TAKEN("This email is already used by another member.", 133),
+    LAST_ADMIN("At least one active admin must remain.", 134),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

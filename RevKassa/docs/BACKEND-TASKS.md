@@ -262,7 +262,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   makse, mis salvestatakse kohe `CONFIRMED` (`decided_by` = admin) koos ühe `PAYMENT` reaga.
   Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta, ka admini sisestatud makse puhul.
 
-- [ ] **B17 · Liikmete haldus** (M) — pärast B04, B10
+- [x] **B17 · Liikmete haldus** (M) — pärast B04, B10
   `GET/POST/PUT /api/admin/members` (nimi, e-post (kohustuslik, unikaalne tõstutundetult —
   võetud → `ForbiddenException`), roll, aktiivne, tasust vabastus; parooli admin ei määra).
   Loomine saadab liikmele kutselingi (B36) ja nimekiri näitab `passwordSet` (kas parool on
@@ -271,8 +271,17 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `GET /api/admin/members/{id}/purchases?page=` (pärast B12): liikme ostud uuemad ees — aeg,
   read ("2 × Saku Originaal"), summa, staatus; admin võtab ostu tagasi olemasoleva
   `POST /api/purchases/{id}/undo` kaudu.
-  Valmis, kui: e-posti unikaalsus, kutse saatmine loomisel, PIN-i lähtestamine (vana PIN kehtetu), parandused ja ostude
-  nimekiri (k.a tagasivõetud ost) on testitud.
+  Tehtud: nimekiri nime järgi (kõik liikmed, `AdminMemberDto`: memberId, displayName, email, role, active,
+  feeExempt, balanceCents, passwordSet, createdAt, version). Loomine → 201 `{member, pin}`; uus liige on aktiivne ja
+  saab esimese aktiivse taseme (taseme valik B27); kirja viga → 503 `123` ja liiget ei salvestata. E-post võetud →
+  403 `133 EMAIL_TAKEN`. `PUT` saadab tagasi `version`-i (vananenud → 409 `105`); viimast aktiivset adminit ei saa
+  alandada ega deaktiveerida → 403 `134 LAST_ADMIN` (adminide read lukustatakse, et kaks adminit ei alandaks teineteist
+  korraga). Uus e-post sulgeb vanale aadressile saadetud lingid. Adminiõiguse kaotanud liikme admini sessioon lõpeb
+  järgmisel päringul (403 `118`, `ActiveMemberFilter`). PIN-i lähtestamine → 200 `{pin}` ja muudab `version`-it.
+  Parandus → 201 liikmega uue saldoga; summa ≠ 0 (väljaviga `amountCentsNotZero`), kuni ±100 000 €, märkus kuni 500
+  märki, ka mitteaktiivsele liikmele. Ostud: 20 lehel, `{purchases:[{purchaseId, createdAt, status, totalCents,
+  lines, reversedAt, reversedByName}], page, hasMore}` — read struktuurina (`PurchaseLineDto`), UI paneb kokku
+  "2 × Saku Originaal". PIN-i ei logita.
 
 - [ ] **B34 · Liige muudab oma PIN-i** (S) — pärast B05
   `PUT /api/me/pin` `{currentPin, newPin}`: praegune PIN peab klappima (vale → `ForbiddenException`

@@ -1,5 +1,7 @@
 package ee.revkassa.persistence.purchase;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -14,5 +16,8 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
     // Only the owner's id, so the owner's row can be locked before the purchase itself is read
     @Query("select p.member.id from Purchase p where p.id = :purchaseId")
     Optional<Long> findMemberId(Long purchaseId);
+
+    @Query("select p from Purchase p left join fetch p.reversedBy where p.member.id = :memberId order by p.createdAt desc, p.id desc")
+    Slice<Purchase> findMemberPurchases(Long memberId, Pageable pageable);
 
 }

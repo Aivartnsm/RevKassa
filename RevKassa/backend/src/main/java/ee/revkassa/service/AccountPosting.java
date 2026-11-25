@@ -62,7 +62,7 @@ public record AccountPosting(Member member, AccountEntryTypeEnum type, long amou
     }
 
     /**
-     * An admin's manual correction, either direction (B18). The note says why.
+     * An admin's manual correction, either direction (B17). The note says why.
      */
     public static AccountPosting adjustment(Member member, long amountCents, String note, Member admin) {
         return new AccountPosting(member, AccountEntryTypeEnum.ADJUSTMENT, amountCents, null, null, null, null, note, admin);

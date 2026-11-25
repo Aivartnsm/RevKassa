@@ -189,6 +189,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   uut PIN-i dialoogis **üks kord**; "Saada kutse uuesti"; saldo parandus (summa + kohustuslik
   põhjus); rolli/aktiivsuse muutmine; "Ostud": liikme
   ostude nimekiri, "Tühista ost" (kinnitusega) võtab ostu tagasi (vajab ka B12).
+  Koodid: 133 → "See e-post on juba teisel liikmel"; 134 → "Vähemalt üks aktiivne admin peab jääma";
+  105 → "Keegi muutis liiget vahepeal, laadi uuesti". Pärast PIN-i lähtestamist laadi liige uuesti (`version` muutub).
+  Saldo paranduse 0-summa viga tuleb väljal `amountCentsNotZero`. Ostu read tulevad struktuurina
+  (`quantity`, `name`): näita "2 × Saku Originaal".
 
 ## Verstapost 5 — Admini ülevaade
 

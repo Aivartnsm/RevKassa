@@ -16,14 +16,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * An admin can deactivate a member while they are logged in. Every request with a session checks that the member
- * is still active; if not, the session ends and the request gets 403 ACCOUNT_NOT_ACTIVE.
+ * An admin can deactivate a member or take away admin rights while they are logged in. Every request with a session
+ * checks that the member is still active (if not: session ends, 403 ACCOUNT_NOT_ACTIVE) and that an admin session
+ * still belongs to an active admin (if not: session ends, 403 ACCESS_DENIED; the member logs in again as a member).
  */
 @Slf4j
 @RequiredArgsConstructor
 public class ActiveMemberFilter extends OncePerRequestFilter {
 
     private static final String AUTH_PATH = "/api/auth/";
+    private static final String ROLE_ADMIN = "ROLE_ADMIN";
 
     private final MemberRepository memberRepository;
     private final LoginSessionService loginSessionService;
@@ -38,21 +40,35 @@ public class ActiveMemberFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        MemberPrincipal principal = currentPrincipal();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        MemberPrincipal principal = principalOf(authentication);
         if (principal != null && !memberRepository.isActiveMember(principal.memberId())) {
             log.info("Session ended for inactive member: memberId={}", principal.memberId());
-            loginSessionService.end(request, response);
-            securityErrorHandler.write(response, HttpStatus.FORBIDDEN, Error.ACCOUNT_NOT_ACTIVE);
+            endSession(request, response, Error.ACCOUNT_NOT_ACTIVE);
+            return;
+        }
+        if (principal != null && hasAdminRole(authentication) && !memberRepository.isActiveAdmin(principal.memberId())) {
+            log.info("Admin session ended, member is no longer an admin: memberId={}", principal.memberId());
+            endSession(request, response, Error.ACCESS_DENIED);
             return;
         }
         chain.doFilter(request, response);
     }
 
-    private static MemberPrincipal currentPrincipal() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    private static MemberPrincipal principalOf(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof MemberPrincipal principal) {
             return principal;
         }
         return null;
+    }
+
+    private static boolean hasAdminRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+                .anyMatch(authority -> ROLE_ADMIN.equals(authority.getAuthority()));
+    }
+
+    private void endSession(HttpServletRequest request, HttpServletResponse response, Error error) throws IOException {
+        loginSessionService.end(request, response);
+        securityErrorHandler.write(response, HttpStatus.FORBIDDEN, error);
     }
 }

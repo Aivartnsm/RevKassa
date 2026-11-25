@@ -68,6 +68,14 @@ public class PasswordLinkService {
         log.info("Password set with link: memberId={}, purpose={}", member.getId(), passwordToken.getPurpose());
     }
 
+    /**
+     * Closes the member's open links, e.g. when the admin changes the email address they were sent to.
+     */
+    @Transactional
+    public void cancelOpenLinks(Member member) {
+        closeOpenLinks(member, OffsetDateTime.now(clock));
+    }
+
     private void closeOpenLinks(Member member, OffsetDateTime now) {
         passwordTokenRepository.findAllOpenByMemberId(member.getId())
                 .forEach(openToken -> openToken.setUsedAt(now));
