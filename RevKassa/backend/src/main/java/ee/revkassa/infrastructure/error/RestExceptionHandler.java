@@ -1,5 +1,6 @@
 package ee.revkassa.infrastructure.error;
 
+import ee.revkassa.infrastructure.exception.BadRequestException;
 import ee.revkassa.infrastructure.exception.ConflictException;
 import ee.revkassa.infrastructure.exception.DataNotFoundException;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -67,6 +69,12 @@ public class RestExceptionHandler {
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(BadRequestException.class)
+    public ApiError handleBadRequestException(BadRequestException exception) {
+        return createApiError(exception.getError());
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ApiError handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
         List<FieldError> fieldErrors = exception.getBindingResult().getFieldErrors();
@@ -77,6 +85,13 @@ public class RestExceptionHandler {
         ApiError apiError = createApiError(Error.INVALID_DATA_IN_FIELDS);
         apiError.setFieldErrors(errorFieldsWithMessages);
         return apiError;
+    }
+
+    // A constraint on a @RequestParam, e.g. ?page=-1
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ApiError handleHandlerMethodValidationException() {
+        return createApiError(Error.INVALID_DATA_IN_FIELDS);
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)

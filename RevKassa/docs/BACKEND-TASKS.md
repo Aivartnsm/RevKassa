@@ -214,17 +214,19 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `AccountPosting.purchaseReversal` ja `StockMove.saleReversal`; 10 min piir `PurchaseService.UNDO_WINDOW`.
   Valmis, kui: 10 minuti piir (fikseeritud `Clock`), omanikukontroll ja topelt-tagasivõtmine on testitud.
 
-- [ ] **B13 · Lemmikud** (S) — pärast B07
-  `MemberFavourite` entiteet. `GET /api/me/favourites` → järjestatud toote id-d;
-  `PUT /api/me/favourites` `{productIds}` asendab nimekirja (positsioonid 0..n−1, ilma
-  korduseta, tundmatu id → 400).
+- [x] **B13 · Lemmikud** (S) — pärast B07
+  `MemberFavourite` entiteet. `GET /api/me/favourites` → järjestatud toote id-d (ka peidetud tooted —
+  ostuvaade näitab ainult tootenimekirjas olevaid); `PUT /api/me/favourites` `{productIds}` asendab
+  nimekirja ja tagastab selle (positsioonid 0..n−1, ilma korduseta, kuni 100, tundmatu id → 400).
   Valmis, kui: asendamine, ümberjärjestamine ja tühi nimekiri on testitud.
 
 ## Verstapost 4 — Konto ja maksed
 
-- [ ] **B14 · Saldo ajalugu** (S) — pärast B11
+- [x] **B14 · Saldo ajalugu** (S) — pärast B11
   `GET /api/me/entries?page=` uuemad ees, loetava kirjeldusega (nt "2 × Saku
-  Originaal", "Makse · pangaülekanne").
+  Originaal", "Makse · pangaülekanne"). 20 rida lehel, vastus `{entries, page, hasMore}`; kirjeldused
+  `AccountEntryService.describe` — makse viisi (B15), liikmemaksu kuu (B23) ja ürituse nime (B29) lisavad
+  need taskid.
   Valmis, kui: lehekülgede kaupa laadimine ja kirjeldused on testitud.
 
 - [ ] **B15 · Maksest teatamine** (S) — pärast B10

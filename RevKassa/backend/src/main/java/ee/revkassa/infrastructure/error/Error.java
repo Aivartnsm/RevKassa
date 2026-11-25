@@ -31,6 +31,7 @@ public enum Error {
     PRICES_CHANGED("Prices have changed. Check the new total and confirm again.", 127),
     PURCHASE_ALREADY_REVERSED("This purchase has already been undone.", 128),
     UNDO_WINDOW_PASSED("A purchase can only be undone within 10 minutes.", 129),
+    UNKNOWN_PRODUCT("A product does not exist.", 130),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

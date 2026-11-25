@@ -26,6 +26,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select p from Product p where p.id in :productIds order by p.id")
     List<Product> findAllForUpdate(List<Long> productIds);
 
+    @Query("select count(p) from Product p where p.id in :productIds")
+    long countByIds(List<Long> productIds);
+
     @Query("select p.stockQty from Product p where p.id = :productId")
     int findStockQty(Long productId);
 
