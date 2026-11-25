@@ -206,8 +206,9 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `requestId`-d ning et samaaegsed ostud (sama toode, sama liige, ost + inventuur) ei kaota uuendusi ega
   jää ummikusse.
 
-- [ ] **B12 · Tagasivõtmine** (S) — pärast B11
-  `POST /api/purchases/{id}/undo`: liige oma ostu 10 minuti jooksul, admin igal ajal.
+- [x] **B12 · Tagasivõtmine** (S) — pärast B11
+  `POST /api/purchases/{id}/undo`: liige oma ostu 10 minuti jooksul, admin (paroolisessioon) igal ajal;
+  teise liikme ost → 404 nagu olematu ost.
   Märgib `REVERSED`, kirjutab `PURCHASE_REVERSAL` ja `SALE_REVERSAL` read. Teist korda →
   `ForbiddenException`. Lukud samas järjekorras nagu ostul (liige, siis tooted id järgi); lisa
   `AccountPosting.purchaseReversal` ja `StockMove.saleReversal`; 10 min piir `PurchaseService.UNDO_WINDOW`.

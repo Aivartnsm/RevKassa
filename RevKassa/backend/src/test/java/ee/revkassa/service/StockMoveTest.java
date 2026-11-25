@@ -22,6 +22,7 @@ class StockMoveTest {
         assertThat(StockMove.delivery(product, 24, 110L, null, member).quantityDelta()).isEqualTo(24);
         assertThat(StockMove.writeOff(product, 2, "katki", member).quantityDelta()).isEqualTo(-2);
         assertThat(StockMove.sale(product, 3, purchase, member).quantityDelta()).isEqualTo(-3);
+        assertThat(StockMove.saleReversal(product, 3, purchase, member).quantityDelta()).isEqualTo(3);
         assertThat(StockMove.stocktake(product, -4, null, member).quantityDelta()).isEqualTo(-4);
         assertThat(StockMove.stocktake(product, 4, null, member).quantityDelta()).isEqualTo(4);
     }

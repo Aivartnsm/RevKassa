@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,5 +59,27 @@ public class PurchaseController {
                                                       @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
         PurchaseService.PurchaseResult result = purchaseService.createPurchase(principal.memberId(), purchaseCreateRequest);
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.OK).body(result.purchase());
+    }
+
+    @PostMapping("/{purchaseId}/undo")
+    @Operation(summary = "Undo a purchase: the total goes back to the balance and the products back to stock",
+            description = "The member may undo their own purchase until undoableUntil (10 minutes); an admin with a password "
+                    + "session may undo any purchase at any time (a PIN session never has admin rights). Nothing is deleted: "
+                    + "the purchase becomes REVERSED and reversal rows are added. Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Purchase undone: status REVERSED, with the new balance"),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Already undone (128), the 10 minutes have passed (129), "
+                    + "member deactivated (112) or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such purchase, or it belongs to another member (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public PurchaseDto undoPurchase(@PathVariable Long purchaseId,
+                                    @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return purchaseService.undoPurchase(purchaseId, principal.memberId(), principal.loginMethod());
     }
 }

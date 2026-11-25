@@ -42,6 +42,19 @@ class AccountPostingTest {
     }
 
     @Test
+    void purchaseReversal_givesTheWholeTotalBackAndRecordsWhoUndid() {
+        Purchase purchase = new Purchase();
+        purchase.setTotalCents(900L);
+
+        AccountPosting posting = AccountPosting.purchaseReversal(member, purchase, admin);
+
+        assertThat(posting.type()).isEqualTo(AccountEntryTypeEnum.PURCHASE_REVERSAL);
+        assertThat(posting.amountCents()).isEqualTo(900);
+        assertThat(posting.purchase()).isSameAs(purchase);
+        assertThat(posting.createdBy()).isSameAs(admin);
+    }
+
+    @Test
     void purchaseWithoutPurchaseLink_isRefused() {
         assertThatThrownBy(() -> new AccountPosting(member, AccountEntryTypeEnum.PURCHASE, -250,
                 null, null, null, null, null, member))

@@ -4,6 +4,9 @@ import ee.revkassa.controller.admin.stock.dto.StocktakeCreateRequestDto;
 import ee.revkassa.controller.admin.stock.dto.StocktakeLineDto;
 import ee.revkassa.controller.purchase.dto.PurchaseCreateRequestDto;
 import ee.revkassa.controller.purchase.dto.PurchaseLineRequestDto;
+import ee.revkassa.infrastructure.error.Error;
+import ee.revkassa.infrastructure.exception.ForbiddenException;
+import ee.revkassa.infrastructure.security.LoginMethodEnum;
 import ee.revkassa.persistence.accountentry.AccountEntryRepository;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRepository;
@@ -34,8 +37,8 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * B11: purchases from parallel threads with real commits (no test transaction): nothing is lost, the same request is
- * recorded once and purchases do not deadlock with a stocktake. The test removes its own rows afterwards.
+ * B11/B12: purchases and undos from parallel threads with real commits (no test transaction): nothing is lost, the
+ * same request is recorded once, a purchase is undone once and nothing deadlocks with a stocktake. The test removes its own rows afterwards.
  */
 @SpringBootTest
 @Import(TestData.class)
@@ -157,6 +160,51 @@ class PurchaseConcurrencyTest {
 
         assertThat(purchaseCountOf(anna) + purchaseCountOf(ben)).isEqualTo(8);
         assertInvariants();
+    }
+
+    @Test
+    void sameUndoSentManyTimesAtOnce_reversesOnce() throws Exception {
+        Long purchaseId = buy(anna, UUID.randomUUID()).purchase().getPurchaseId();
+        List<Callable<?>> tasks = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            tasks.add(() -> undoOrError(purchaseId, anna));
+        }
+
+        List<Object> results = runAtOnce(tasks);
+
+        assertThat(results).filteredOn(result -> result == Error.PURCHASE_ALREADY_REVERSED).hasSize(5);
+        assertThat(balanceOf(anna)).isZero();
+        assertThat(stockOf(lager)).isEqualTo(START_STOCK);
+        assertThat(stockOf(stout)).isEqualTo(START_STOCK);
+        assertInvariants();
+    }
+
+    @Test
+    void undosPurchasesAndStocktakesAtOnce_doNotDeadlock() throws Exception {
+        List<Long> purchaseIds = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            purchaseIds.add(buy(anna, UUID.randomUUID()).purchase().getPurchaseId());
+        }
+        List<Callable<?>> tasks = new ArrayList<>();
+        for (Long purchaseId : purchaseIds) {
+            tasks.add(() -> purchaseService.undoPurchase(purchaseId, admin.getId(), LoginMethodEnum.PASSWORD));
+            tasks.add(() -> buy(anna, UUID.randomUUID()));
+            tasks.add(() -> buy(ben, UUID.randomUUID()));
+            tasks.add(this::countBothAtFifty);
+        }
+
+        runAtOnce(tasks);
+
+        assertThat(balanceOf(anna)).isEqualTo(-4 * 1050);
+        assertInvariants();
+    }
+
+    private Object undoOrError(Long purchaseId, Member member) {
+        try {
+            return purchaseService.undoPurchase(purchaseId, member.getId(), LoginMethodEnum.PASSWORD);
+        } catch (ForbiddenException e) {
+            return e.getError();
+        }
     }
 
     // Lines on purpose in reverse id order: the service must still lock products in id order

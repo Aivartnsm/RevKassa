@@ -48,4 +48,9 @@ public record StockMove(Product product, StockMovementTypeEnum type, int quantit
     public static StockMove sale(Product product, int quantity, Purchase purchase, Member member) {
         return new StockMove(product, StockMovementTypeEnum.SALE, -quantity, null, purchase, null, member);
     }
+
+    // Puts back what one purchase line took; reversedBy is the member themselves or an admin
+    public static StockMove saleReversal(Product product, int quantity, Purchase purchase, Member reversedBy) {
+        return new StockMove(product, StockMovementTypeEnum.SALE_REVERSAL, quantity, null, purchase, null, reversedBy);
+    }
 }

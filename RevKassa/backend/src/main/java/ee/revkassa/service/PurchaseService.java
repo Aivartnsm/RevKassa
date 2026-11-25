@@ -7,8 +7,10 @@ import ee.revkassa.infrastructure.error.Error;
 import ee.revkassa.infrastructure.exception.ConflictException;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.PrimaryKeyNotFoundException;
+import ee.revkassa.infrastructure.security.LoginMethodEnum;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRepository;
+import ee.revkassa.persistence.member.MemberRoleEnum;
 import ee.revkassa.persistence.product.Product;
 import ee.revkassa.persistence.product.ProductRepository;
 import ee.revkassa.persistence.purchase.Purchase;
@@ -26,6 +28,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -39,6 +42,7 @@ import java.util.stream.Collectors;
  * A member buys for their own balance (guests too, on the member's balance). One transaction writes the purchase,
  * its lines with the prices of this moment, one SALE stock movement per line and one PURCHASE ledger row.
  * No balance limit, and stock may go negative: the fridge is the truth.
+ * Undo never deletes anything: the purchase is marked REVERSED and PURCHASE_REVERSAL and SALE_REVERSAL rows are added.
  * Lock order (same in undo): the member's row first, then products in id order.
  */
 @Slf4j
@@ -81,9 +85,75 @@ public class PurchaseService {
         return new PurchaseResult(toPurchaseDto(purchase, lines, balanceCents), true);
     }
 
+    /**
+     * The member may undo their own purchase within UNDO_WINDOW; an admin with a password session may undo any purchase
+     * at any time. Another member's purchase answers as if it did not exist.
+     */
+    @Transactional
+    public PurchaseDto undoPurchase(Long purchaseId, Long actorId, LoginMethodEnum loginMethod) {
+        Member owner = getValidMemberForUpdateBy(getValidOwnerIdBy(purchaseId));
+        Member actor = actorId.equals(owner.getId()) ? owner : getValidMemberBy(actorId);
+        Purchase purchase = getValidPurchaseBy(purchaseId);
+        boolean admin = isAdmin(actor, loginMethod);
+        validateMayUndo(purchase, actor, admin);
+        List<PurchaseLine> lines = purchaseLineRepository.findAllByPurchaseId(purchaseId);
+        moveStockBackInProductIdOrder(purchase, lines, actor);
+        markReversed(purchase, actor);
+        long balanceCents = accountService.post(AccountPosting.purchaseReversal(owner, purchase, actor));
+        log.info("Purchase undone: purchaseId={}, memberId={}, reversedBy={}", purchaseId, owner.getId(), actor.getId());
+        return toPurchaseDto(purchase, lines, balanceCents);
+    }
+
+    private Long getValidOwnerIdBy(Long purchaseId) {
+        return purchaseRepository.findMemberId(purchaseId)
+                .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
+    }
+
     private Member getValidMemberForUpdateBy(Long memberId) {
         return memberRepository.findForUpdate(memberId)
                 .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
+    }
+
+    private Member getValidMemberBy(Long memberId) {
+        return memberRepository.findById(memberId)
+                .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
+    }
+
+    // Read after the owner's row is locked: a parallel undo of the same purchase has finished by now
+    private Purchase getValidPurchaseBy(Long purchaseId) {
+        return purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
+    }
+
+    // Read fresh from the database, like the session's ROLE_ADMIN: a PIN never gives admin rights
+    private static boolean isAdmin(Member actor, LoginMethodEnum loginMethod) {
+        return loginMethod == LoginMethodEnum.PASSWORD && actor.getRole() == MemberRoleEnum.ADMIN;
+    }
+
+    private void validateMayUndo(Purchase purchase, Member actor, boolean admin) {
+        if (!admin && !purchase.getMember().getId().equals(actor.getId())) {
+            log.warn("Undo of another member's purchase refused: purchaseId={}, memberId={}", purchase.getId(), actor.getId());
+            throw new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND);
+        }
+        if (purchase.getStatus() == PurchaseStatusEnum.REVERSED) {
+            throw new ForbiddenException(Error.PURCHASE_ALREADY_REVERSED);
+        }
+        if (!admin && OffsetDateTime.now(clock).isAfter(purchase.getCreatedAt().plus(UNDO_WINDOW))) {
+            throw new ForbiddenException(Error.UNDO_WINDOW_PASSED);
+        }
+    }
+
+    // Product id order, the same lock order as when buying
+    private void moveStockBackInProductIdOrder(Purchase purchase, List<PurchaseLine> lines, Member actor) {
+        lines.stream()
+                .sorted(Comparator.comparing(line -> line.getProduct().getId()))
+                .forEach(line -> stockService.move(StockMove.saleReversal(line.getProduct(), line.getQuantity(), purchase, actor)));
+    }
+
+    private void markReversed(Purchase purchase, Member actor) {
+        purchase.setStatus(PurchaseStatusEnum.REVERSED);
+        purchase.setReversedAt(OffsetDateTime.now(clock));
+        purchase.setReversedBy(actor);
     }
 
     // A requestId is a random UUID; another member's id can only be a client bug or a guess, never a reason to show it

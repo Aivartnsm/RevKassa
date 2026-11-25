@@ -29,6 +29,8 @@ public enum Error {
     DUPLICATE_PRODUCT_IN_STOCKTAKE("A product is counted more than once.", 125),
     PRODUCT_NOT_AVAILABLE("A product is no longer for sale.", 126),
     PRICES_CHANGED("Prices have changed. Check the new total and confirm again.", 127),
+    PURCHASE_ALREADY_REVERSED("This purchase has already been undone.", 128),
+    UNDO_WINDOW_PASSED("A purchase can only be undone within 10 minutes.", 129),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;
