@@ -45,7 +45,7 @@ public class AccountService {
         entry.setType(posting.type());
         entry.setAmountCents(posting.amountCents());
         entry.setPurchase(posting.purchase());
-        entry.setPaymentId(posting.paymentId());
+        entry.setPayment(posting.payment());
         entry.setMembershipChargeId(posting.membershipChargeId());
         entry.setEventParticipantId(posting.eventParticipantId());
         entry.setNote(posting.note());

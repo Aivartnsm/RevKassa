@@ -152,6 +152,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 ## Verstapost 4 — Konto ja maksed
 
+- [ ] **F33 · Admin: ühingu andmed** (S) — vajab B39
+  Vorm: saaja nimi ja IBAN (kuvatakse nelja kaupa grupeeritult). Vigane IBAN → 400 teade välja juures,
+  409 → "Keegi muutis andmeid, laadi uuesti". Liikme makseekraan näitab neid andmeid (F14).
+
 - [ ] **F13 · Minu konto** (M) — vajab B14, B15
   Saldokaart ("Sinu võlg" / "Sinu ettemaks"), ootel maksed, ajalugu nupuga "Laadi veel".
   Tahvel: vasakul saldo ja maksevorm, paremal ootel maksed ja ajalugu.
@@ -169,12 +173,15 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   "PIN-kood muudetud", vead backendi `message` järgi.
 
 - [ ] **F14 · Maksa või maksa ette** (S) — vajab B15
-  Makseviisi valik (pangaülekanne / kaart), summa eurodes, valikuline viide; kinnitusteade;
-  ilmub "Ootab kinnitust" alla.
+  Pangaülekande andmed (`GET /api/payments/details`): saaja, IBAN ja selgitus kopeerimisnuppudega.
+  Pärast ülekannet "Maksin": summa eurodes, valikuline viide → kinnitusteade, ilmub "Ootab kinnitust"
+  alla. Tagasilükatud makse näitab admini põhjust. IBAN tuleb tühikuteta: näita neljaste gruppidena, kopeeri
+  tühikuteta. Seadistamata andmed (404, kood 131) → "Makseandmed on veel seadistamata, küsi adminilt".
 
 - [ ] **F15 · Admin: maksed** (S) — vajab B16
   Ootel maksete nimekiri nuppudega Kinnita / Lükka tagasi (valikuline märkus); arvu märk admini menüüs.
-  "Sisesta makse": liige, makseviis, summa, selgitus → salvestub kohe kinnitatuna, saldo uueneb.
+  "Sisesta makse": liige, summa, selgitus → salvestub kohe kinnitatuna, saldo uueneb.
+  403 kood 132 (teine admin jõudis ette) → "Makse on juba otsustatud", laadi nimekiri uuesti.
 
 - [ ] **F16 · Admin: liikmed** (M) — vajab B17
   Nimekiri saldo ja staatusega (+ "Parool määramata" märk); e-post (kohustuslik) ja tasust

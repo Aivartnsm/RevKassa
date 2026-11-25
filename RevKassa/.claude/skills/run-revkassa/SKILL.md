@@ -41,8 +41,8 @@ Ilma `REVKASSA_PIN_SECRET`-ita rakendus ei käivitu (testid saavad selle failist
 muster leiab ka käsurea enda shelli (kui käsus on kuskil sama sõna) ja tapab selle.
 
 E-kirjad: ilma `SPRING_MAIL_HOST`-ita kirjutatakse kirjad logisse ("Email NOT sent ..."), sealt saab parooli
-lingi kopeerida. SMTP-ga peavad olema seatud `REVKASSA_MAIL_FROM`, `REVKASSA_INVOICE_ORG_NAME`,
-`REVKASSA_INVOICE_IBAN` (ja tootmises `REVKASSA_APP_URL`), muidu rakendus ei käivitu.
+lingi kopeerida. SMTP-ga peab olema seatud `REVKASSA_MAIL_FROM`
+(ja tootmises `REVKASSA_APP_URL`), muidu rakendus ei käivitu. Saaja nime ja IBAN-i seab admin rakenduses (B39).
 
 Tühjas andmebaasis (pole aktiivset adminit) loob rakendus käivitumisel esimese admini, kui on seatud
 `REVKASSA_BOOTSTRAP_ADMIN_EMAIL`, `REVKASSA_BOOTSTRAP_ADMIN_PASSWORD` (paroolireeglid: nt `Bootstrap-Pass-91x`) ja soovi korral `_NAME`;

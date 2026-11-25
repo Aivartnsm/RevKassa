@@ -26,6 +26,7 @@ Konventsioonid
 erDiagram
     member ||--o{ purchase : makes
     member ||--o{ payment : reports
+    member |o--o| organisation : "last updated"
     member ||--o{ account_entry : "balance history"
     member ||--o{ member_favourite : stars
     product ||--o{ member_favourite : "starred as"
@@ -133,13 +134,25 @@ Link kehtib, kui `used_at is null` ja `expires_at > now()`. Ühekordne.
 | quantity | integer not null | > 0 |
 | unit_price_cents | bigint not null | hind müügi hetkel |
 
+### organisation
+| veerg | tüüp | märkused |
+|---|---|---|
+| id | integer PK | alati `1` (`CHECK`): üks rida |
+| name | text | saaja nimi pangaülekandel ja arvel; null = seadistamata |
+| iban | text | normaliseeritud (tühikuteta, suurtähed), mod 97 kontrolliga; null = seadistamata |
+| updated_by | bigint FK member | admin, kes viimati muutis |
+| updated_at | timestamptz | |
+| version | bigint not null | optimistlik lukk |
+
+`2_create.sql` lisab rea `id = 1` tühjade väärtustega; admin täidab selle rakenduses.
+
 ### payment
 | veerg | tüüp | märkused |
 |---|---|---|
 | id | bigint PK | |
 | member_id | bigint not null FK member | kes maksis |
 | amount_cents | bigint not null | > 0 |
-| method | text not null | `CARD` \| `BANK_TRANSFER` |
+| method | text not null | `BANK_TRANSFER` (ainus viis; veerg jääb tulevase kaarditerminali jaoks) |
 | reference | text | panga viide / liikme märkus |
 | status | text not null | `PENDING` \| `CONFIRMED` \| `REJECTED` |
 | reported_at | timestamptz not null | |
@@ -308,7 +321,7 @@ praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
 - `password_token (token_hash)` unikaalne; `password_token (member_id)`
 - `member (pin_hmac)` unikaalne — sisselogimise otsing
 - `purchase (member_id, created_at desc)`
-- `payment (status, reported_at)` — admini "ootel" nimekiri
+- `payment (status, reported_at)` — admini "ootel" nimekiri; `payment (member_id, status, reported_at desc)` — liikme maksed
 - `account_entry (member_id, created_at desc)` — liikme ajalugu
 - `stock_movement (product_id, created_at desc)`
 - `member_favourite (member_id, position)` unikaalne

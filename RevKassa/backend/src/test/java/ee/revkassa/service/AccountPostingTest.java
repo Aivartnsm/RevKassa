@@ -2,6 +2,7 @@ package ee.revkassa.service;
 
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.payment.Payment;
 import ee.revkassa.persistence.purchase.Purchase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,6 +56,21 @@ class AccountPostingTest {
     }
 
     @Test
+    void payment_creditsThePayerTheWholeAmountAndRecordsTheAdmin() {
+        Payment payment = new Payment();
+        payment.setMember(member);
+        payment.setAmountCents(2500L);
+
+        AccountPosting posting = AccountPosting.payment(payment, admin);
+
+        assertThat(posting.type()).isEqualTo(AccountEntryTypeEnum.PAYMENT);
+        assertThat(posting.member()).isSameAs(member);
+        assertThat(posting.amountCents()).isEqualTo(2500);
+        assertThat(posting.payment()).isSameAs(payment);
+        assertThat(posting.createdBy()).isSameAs(admin);
+    }
+
+    @Test
     void purchaseWithoutPurchaseLink_isRefused() {
         assertThatThrownBy(() -> new AccountPosting(member, AccountEntryTypeEnum.PURCHASE, -250,
                 null, null, null, null, null, member))
@@ -65,7 +81,7 @@ class AccountPostingTest {
     @Test
     void paymentWithAnExtraPurchaseLink_isRefused() {
         assertThatThrownBy(() -> new AccountPosting(member, AccountEntryTypeEnum.PAYMENT, 5000,
-                new Purchase(), 3L, null, null, null, admin))
+                new Purchase(), new Payment(), null, null, null, admin))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("must not have a PURCHASE link");
     }
@@ -100,7 +116,7 @@ class AccountPostingTest {
         return switch (type.getLink()) {
             case NONE -> new AccountPosting(member, type, amountCents, null, null, null, null, "märkus", admin);
             case PURCHASE -> new AccountPosting(member, type, amountCents, new Purchase(), null, null, null, "märkus", member);
-            case PAYMENT -> new AccountPosting(member, type, amountCents, null, id, null, null, "märkus", admin);
+            case PAYMENT -> new AccountPosting(member, type, amountCents, null, new Payment(), null, null, "märkus", admin);
             case MEMBERSHIP_CHARGE -> new AccountPosting(member, type, amountCents, null, null, id, null, "märkus", null);
             case EVENT_PARTICIPANT -> new AccountPosting(member, type, amountCents, null, null, null, id, "märkus", admin);
         };

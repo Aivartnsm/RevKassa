@@ -83,7 +83,7 @@ public class AccountEntryService {
         return switch (entry.getType()) {
             case PURCHASE -> purchaseDescriptions.get(entry.getPurchase().getId());
             case PURCHASE_REVERSAL -> REVERSED_PURCHASE + purchaseDescriptions.get(entry.getPurchase().getId());
-            case PAYMENT -> PAYMENT;
+            case PAYMENT -> PAYMENT + NOTE_SEPARATOR + entry.getPayment().getMethod().getDescription();
             case ADJUSTMENT -> withNote(ADJUSTMENT, entry.getNote());
             case MEMBERSHIP_FEE -> MEMBERSHIP_FEE;
             case MEMBERSHIP_FEE_WAIVER -> withNote(MEMBERSHIP_FEE_WAIVER, entry.getNote());

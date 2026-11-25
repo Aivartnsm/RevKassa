@@ -91,7 +91,7 @@ CREATE TABLE payment (
     decision_note text,
     CONSTRAINT payment_pk PRIMARY KEY (id),
     CONSTRAINT ck_payment_amount_cents CHECK (amount_cents > 0),
-    CONSTRAINT ck_payment_method CHECK (method IN ('CARD', 'BANK_TRANSFER')),
+    CONSTRAINT ck_payment_method CHECK (method IN ('BANK_TRANSFER')),
     CONSTRAINT ck_payment_status CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED'))
 );
 
@@ -179,6 +179,18 @@ CREATE TABLE password_token (
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT password_token_pk PRIMARY KEY (id),
     CONSTRAINT ck_password_token_purpose CHECK (purpose IN ('INVITE', 'RESET'))
+);
+
+-- Table: organisation (üks rida: saaja nimi ja IBAN pangaülekannete ja arvete jaoks; admin muudab)
+CREATE TABLE organisation (
+    id         integer     NOT NULL,
+    name       text,
+    iban       text,
+    updated_by bigint,
+    updated_at timestamptz,
+    version    bigint      NOT NULL DEFAULT 0,
+    CONSTRAINT organisation_pk PRIMARY KEY (id),
+    CONSTRAINT ck_organisation_single_row CHECK (id = 1)
 );
 
 -- Table: event
@@ -311,6 +323,8 @@ ALTER TABLE trusted_device ADD CONSTRAINT fk_trusted_device_revoked_by FOREIGN K
 ALTER TABLE password_token ADD CONSTRAINT fk_password_token_member_id FOREIGN KEY (member_id) REFERENCES member (id);
 ALTER TABLE password_token ADD CONSTRAINT fk_password_token_created_by FOREIGN KEY (created_by) REFERENCES member (id);
 
+ALTER TABLE organisation ADD CONSTRAINT fk_organisation_updated_by FOREIGN KEY (updated_by) REFERENCES member (id);
+
 ALTER TABLE event ADD CONSTRAINT fk_event_created_by FOREIGN KEY (created_by) REFERENCES member (id);
 
 ALTER TABLE event_level_fee ADD CONSTRAINT fk_event_level_fee_event_id FOREIGN KEY (event_id) REFERENCES event (id) ON DELETE CASCADE;
@@ -342,6 +356,7 @@ CREATE UNIQUE INDEX ux_member_pin_hmac ON member (pin_hmac);
 CREATE INDEX ix_purchase_member_id_created_at ON purchase (member_id, created_at DESC);
 CREATE UNIQUE INDEX ux_purchase_request_id ON purchase (request_id);
 CREATE INDEX ix_payment_status_reported_at ON payment (status, reported_at);
+CREATE INDEX ix_payment_member_id_status_reported_at ON payment (member_id, status, reported_at DESC);
 CREATE UNIQUE INDEX ux_account_entry_payment_id ON account_entry (payment_id);
 CREATE INDEX ix_account_entry_member_id_created_at ON account_entry (member_id, created_at DESC);
 CREATE INDEX ix_stock_movement_product_id_created_at ON stock_movement (product_id, created_at DESC);
@@ -366,5 +381,8 @@ INSERT INTO membership_level (name, sort_order) VALUES ('Noorliige', 2);
 INSERT INTO membership_level (name, sort_order) VALUES ('Vilistlane', 3);
 INSERT INTO membership_level (name, sort_order) VALUES ('Toetajaliige', 4);
 INSERT INTO membership_level (name, sort_order) VALUES ('Auliige', 5);
+
+-- initial data: ühingu andmete rida, tühi kuni admin täidab (B39)
+INSERT INTO organisation (id) VALUES (1);
 
 -- End of file.

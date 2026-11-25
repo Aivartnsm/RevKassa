@@ -32,6 +32,8 @@ public enum Error {
     PURCHASE_ALREADY_REVERSED("This purchase has already been undone.", 128),
     UNDO_WINDOW_PASSED("A purchase can only be undone within 10 minutes.", 129),
     UNKNOWN_PRODUCT("A product does not exist.", 130),
+    PAYMENT_DETAILS_NOT_SET("Payment details have not been set up yet.", 131),
+    PAYMENT_ALREADY_DECIDED("This payment has already been confirmed or rejected.", 132),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

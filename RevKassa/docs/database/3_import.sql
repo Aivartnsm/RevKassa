@@ -36,6 +36,9 @@ INSERT INTO trusted_device (id, name, token_hash, created_by, created_at, last_u
 INSERT INTO password_token (id, member_id, token_hash, purpose, expires_at, used_at, created_by, created_at) VALUES (default, 4, '2e9ca50506a0df5b98a99b9a21553b7cd128cca83e870205f76323784789e022', 'INVITE', '2099-01-01 00:00+02', null, 1, '2026-11-20 12:00+02');
 
 
+-- organisation (Mari seadistas; IBAN on Swedbanki näidis-IBAN, kontrollsumma kehtib)
+UPDATE organisation SET name = 'MTÜ Näidisklubi', iban = 'EE382200221020145685', updated_by = 1, updated_at = '2026-08-01 10:00+03' WHERE id = 1;
+
 -- product (laoseis lõpuks: 22, 15, 18, 12, 5, 3, 9, 10, 0)
 INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku Originaal', 'Lager', 500, 250, 6, 1, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
 INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'A. Le Coq Premium', 'Lager', 500, 250, 6, 2, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
@@ -112,13 +115,13 @@ INSERT INTO purchase_line (id, purchase_id, product_id, quantity, unit_price_cen
 
 
 -- payment (2 ootel adminile, 1 tagasi lükatud)
-INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 5, 5000, 'CARD', 'Ettemaks', 'CONFIRMED', '2026-09-01 12:00+03', 5, '2026-09-01 12:00+03', null);
+INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 5, 5000, 'BANK_TRANSFER', 'Ettemaks', 'CONFIRMED', '2026-09-01 12:00+03', 5, '2026-09-01 12:00+03', null);
 INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 3, 970, 'BANK_TRANSFER', 'Liis Lepp september', 'CONFIRMED', '2026-09-24 21:00+03', 1, '2026-09-25 09:30+03', null);
 INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 1, 2000, 'BANK_TRANSFER', 'Mari Tamm september', 'CONFIRMED', '2026-09-28 18:00+03', 5, '2026-09-29 10:00+03', null);
-INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 2, 2560, 'CARD', null, 'CONFIRMED', '2026-09-30 20:00+03', 5, '2026-09-30 22:00+03', null);
+INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 2, 2560, 'BANK_TRANSFER', null, 'CONFIRMED', '2026-09-30 20:00+03', 5, '2026-09-30 22:00+03', null);
 INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 1, 2000, 'BANK_TRANSFER', 'Mari Tamm oktoober', 'CONFIRMED', '2026-10-09 17:00+03', 5, '2026-10-10 11:00+03', null);
 INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 3, 1500, 'BANK_TRANSFER', 'Arve 2026-0002', 'REJECTED', '2026-10-20 12:00+03', 1, '2026-10-22 09:00+03', 'Laekumist pangaväljavõttel ei leitud');
-INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 2, 1000, 'CARD', null, 'PENDING', '2026-10-27 20:30+02', null, null, null);
+INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 2, 1000, 'BANK_TRANSFER', null, 'PENDING', '2026-10-27 20:30+02', null, null, null);
 INSERT INTO payment (id, member_id, amount_cents, method, reference, status, reported_at, decided_by, decided_at, decision_note) VALUES (default, 4, 820, 'BANK_TRANSFER', 'Rasmus Pärn', 'PENDING', '2026-10-28 09:15+02', null, null, null);
 
 

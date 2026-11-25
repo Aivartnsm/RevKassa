@@ -92,12 +92,12 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   implementatsioon, kui `spring.mail.host` on seatud, muidu logiv (arendus).
   `@ConfigurationProperties` `revkassa.mail.*` (from, reply-to), `revkassa.app-url` (linkide
   alus, arenduses `http://localhost:5173`) ja `revkassa.invoice.*` (org-name, iban,
-  due-days = 14), valideeritakse käivitumisel, kui SMTP on sees.
+  due-days = 14), valideeritakse käivitumisel, kui SMTP on sees. (B39 viib org-name ja iban andmebaasi.)
   Tehtud: `Mailer.send(MailMessage(to, subject, body))`; SMTP viga → `MailSendFailedException` (lühike
   põhjus ilma sisu ja aadressita, arve saab selle salvestada). Seaded `RevkassaProperties` (`infrastructure/config/`).
   SMTP ajalõpud 10 s. SMTP + `localhost` app-url → hoiatus logis. Keskkonnamuutujad: `SPRING_MAIL_HOST/_PORT/
   _USERNAME/_PASSWORD`, `REVKASSA_APP_URL`, `REVKASSA_MAIL_FROM`, `REVKASSA_MAIL_REPLY_TO`,
-  `REVKASSA_INVOICE_ORG_NAME`, `REVKASSA_INVOICE_IBAN`, `REVKASSA_INVOICE_DUE_DAYS`.
+  `REVKASSA_INVOICE_DUE_DAYS` (org-name ja iban viis B39 andmebaasi).
   Valmis, kui: testid näitavad, et ilma hostita kasutatakse logivat saatjat ja seaded seotakse.
 
 - [x] **B36 · Parooli lingid** (M) — pärast B04, B25
@@ -222,6 +222,19 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 4 — Konto ja maksed
 
+- [x] **B39 · Ühingu andmed** (S) — pärast B04; B15 ja B26 kasutavad
+  Saaja nimi ja IBAN on andmebaasis (admin muudab), mitte konfiguratsioonis. Tabel `organisation`
+  (üks rida `id = 1`, `name`, `iban`, `updated_by`, `updated_at`, `version`); `2_create.sql` lisab tühja
+  rea, `3_import.sql` arenduse väärtused. `GET /api/admin/organisation`, `PUT /api/admin/organisation`
+  `{name ≤ 100, iban, version}`: IBAN normaliseeritakse (tühikud välja, suurtähed) ja kontrollitakse
+  (ISO 13616 mod 97, ≤ 34 märki) → 400; vananenud `version` → 409. Muutus logitakse admini id-ga.
+  IBAN-i muutumisel saadetakse kõigile aktiivsetele adminitele eestikeelne e-kiri (kes muutis, millal, vana
+  ja uus IBAN); kirja saatmise viga ei tühista muudatust, see logitakse.
+  `revkassa.invoice.org-name` / `.iban` kaovad seadetest (`RevkassaProperties`, `MailConfig`);
+  `due-days` jääb.
+  Valmis, kui: kehtiv/vigane IBAN, normaliseerimine, optimistlik lukk, ainult admini ligipääs ja
+  teavituskiri (ainult IBAN-i muutumisel, kõigile aktiivsetele adminitele) on testitud.
+
 - [x] **B14 · Saldo ajalugu** (S) — pärast B11
   `GET /api/me/entries?page=` uuemad ees, loetava kirjeldusega (nt "2 × Saku
   Originaal", "Makse · pangaülekanne"). 20 rida lehel, vastus `{entries, page, hasMore}`; kirjeldused
@@ -229,15 +242,23 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   need taskid.
   Valmis, kui: lehekülgede kaupa laadimine ja kirjeldused on testitud.
 
-- [ ] **B15 · Maksest teatamine** (S) — pärast B10
-  `POST /api/payments` (summa > 0, `CARD`/`BANK_TRANSFER`, valikuline viide) → `PENDING`,
-  saldo ei muutu. `GET /api/me/payments?status=PENDING` "ootel" nimekirja jaoks.
-  Valmis, kui: saldo jääb puutumata kuni kinnitamiseni.
+- [x] **B15 · Maksest teatamine** (S) — pärast B10, B39
+  Liige maksab tavalise pangaülekandega (makseplatvormi ega pangalingi lepingut pole).
+  `GET /api/payments/details` → `{recipient, iban, description}`: saaja ja IBAN `organisation` tabelist
+  (B39; seadistamata → 404, kood 131), selgitus "RevKassa - Kaspar Kask" (lihtsad märgid, mida pangad
+  ülekande selgituses ei muuda), et admin tunneks ülekande väljavõttel ära. `POST /api/payments` `{amountCents > 0, reference?}` (ülempiirita,
+  viide ≤ 140 märki) → `PENDING` `BANK_TRANSFER`, saldo ei muutu; topeltsaatmine on lubatud (admin lükkab
+  korduse tagasi). `GET /api/me/payments?status=` `PENDING` (vaikimisi) | `CONFIRMED` | `REJECTED`, uuemad
+  ees, kuni 50 — tagasilükatul on admini `decisionNote`. Skeem: `CARD` kaob (`payment.method` jääb
+  tulevase terminali jaoks, lubatud ainult `BANK_TRANSFER`; algandmete `CARD` read → `BANK_TRANSFER`).
+  B14 jätk: kinnitatud makse ajaloos "Makse · pangaülekanne".
+  Valmis, kui: saldo ja pearaamat jäävad puutumata kuni kinnitamiseni, liige näeb ainult oma makseid.
 
-- [ ] **B16 · Maksete kinnitamine / tagasilükkamine** (S) — pärast B15
-  `GET /api/admin/payments?status=PENDING`; `POST /api/admin/payments/{id}/confirm` kirjutab
-  ühe `PAYMENT` rea; `/reject` valikulise märkusega. Teist korda otsustamine → `ForbiddenException`.
-  `POST /api/admin/payments` `{memberId, amountCents > 0, method, reference?}`: admin sisestab
+- [x] **B16 · Maksete kinnitamine / tagasilükkamine** (S) — pärast B15
+  `GET /api/admin/payments?status=PENDING` (kuni 100; ootel vanemad ees, otsustatud viimati otsustatud ees,
+  liikme nimega); `POST /api/admin/payments/{id}/confirm` kirjutab ühe `PAYMENT` rea; `/reject` valikulise
+  märkusega (≤ 500). Teist korda otsustamine → `ForbiddenException` (132); otsus lukustab maksja rea.
+  `POST /api/admin/payments` `{memberId, amountCents > 0, reference?}`: admin sisestab
   makse, mis salvestatakse kohe `CONFIRMED` (`decided_by` = admin) koos ühe `PAYMENT` reaga.
   Valmis, kui: testid tõestavad täpselt üht rida kinnitatud makse kohta, ka admini sisestatud makse puhul.
 
@@ -302,12 +323,12 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 (B25 · E-kirjade saatmine on verstapostis 1, sest parooli lingid vajavad seda.)
 
-- [ ] **B26 · Arved** (M) — pärast B14, B17, B25
+- [ ] **B26 · Arved** (M) — pärast B14, B17, B25, B39
   `Invoice` entiteet. `GET /api/admin/invoices/candidates`: liikmed saldoga < 0, e-post,
   viimase arve kuupäev. `GET /api/admin/invoices/preview?memberId=`.
   `POST /api/admin/invoices` `{memberIds}`: liikme kohta oma transaktsioon: järgmine number
   `YYYY-NNNN`, summa = −saldo, maksetähtaeg, lihttekstiga **eestikeelne** sisu (võlg, read
-  eelmisest arvest või viimased 60 päeva, IBAN, selgitus "Arve <number>"; `et-EE` raha ja
+  eelmisest arvest või viimased 60 päeva, saaja ja IBAN `organisation` tabelist, selgitus "Arve <number>"; `et-EE` raha ja
   kuupäevad, eestikeelsed kuunimed), saada, salvesta `SENT` või `FAILED` + viga;
   tagastab tulemuse liikme kaupa. Saldo ≥ 0 → vahele jäetud koos põhjusega.
   `GET /api/admin/invoices?memberId=`, `POST /api/admin/invoices/{id}/resend` (ainult

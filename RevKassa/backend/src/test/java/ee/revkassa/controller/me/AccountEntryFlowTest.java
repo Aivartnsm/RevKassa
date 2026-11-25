@@ -1,7 +1,11 @@
 package ee.revkassa.controller.me;
 
+import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRoleEnum;
+import ee.revkassa.persistence.payment.Payment;
+import ee.revkassa.persistence.payment.PaymentMethodEnum;
+import ee.revkassa.persistence.payment.PaymentStatusEnum;
 import ee.revkassa.persistence.product.Product;
 import ee.revkassa.service.AccountEntryService;
 import ee.revkassa.service.AccountPosting;
@@ -31,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -143,6 +148,27 @@ class AccountEntryFlowTest {
                 .andExpect(jsonPath("$.entries[0].type").value("ADJUSTMENT"))
                 .andExpect(jsonPath("$.entries[0].amountCents").value(500))
                 .andExpect(jsonPath("$.entries[0].description").value("Parandus · Sularaha baaris"))
+                .andExpect(jsonPath("$.entries[0].purchaseId").value(nullValue()));
+    }
+
+    @Test
+    void confirmedPayment_isDescribedWithItsMethod() throws Exception {
+        Payment payment = new Payment();
+        payment.setMember(member);
+        payment.setAmountCents(2000L);
+        payment.setMethod(PaymentMethodEnum.BANK_TRANSFER);
+        payment.setStatus(PaymentStatusEnum.CONFIRMED);
+        payment.setReportedAt(OffsetDateTime.now(clock));
+        entityManager.persist(payment);
+        // As B16 will post it on confirming
+        accountService.post(new AccountPosting(member, AccountEntryTypeEnum.PAYMENT, 2000, null, payment, null, null,
+                null, admin));
+        forget();
+
+        entries(memberSession, 0)
+                .andExpect(jsonPath("$.entries[0].type").value("PAYMENT"))
+                .andExpect(jsonPath("$.entries[0].amountCents").value(2000))
+                .andExpect(jsonPath("$.entries[0].description").value("Makse · pangaülekanne"))
                 .andExpect(jsonPath("$.entries[0].purchaseId").value(nullValue()));
     }
 

@@ -40,8 +40,6 @@ public class MailConfig {
         List<String> missing = new ArrayList<>();
         requireText(properties.appUrl(), "revkassa.app-url", missing);
         requireText(properties.mail().from(), "revkassa.mail.from", missing);
-        requireText(properties.invoice().orgName(), "revkassa.invoice.org-name", missing);
-        requireText(properties.invoice().iban(), "revkassa.invoice.iban", missing);
         if (properties.invoice().dueDays() < 1) {
             missing.add("revkassa.invoice.due-days (must be at least 1)");
         }

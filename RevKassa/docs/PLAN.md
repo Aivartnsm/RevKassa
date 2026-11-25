@@ -112,8 +112,11 @@ Ostud
 
 Maksed
 - Liige võib enne ostmist ette maksta; positiivne saldo on ettemaks ja ostud vähendavad seda.
-- Liige teatab summa, viisi (`CARD` / `BANK_TRANSFER`) ja valikulise viite → `PENDING`. Saldot
-  muudavad ainult `CONFIRMED` maksed. Admin saab makse ka kohe kinnitatuna sisestada.
+- Makseplatvormi ega pangalingi lepinguid pole: liige maksab tavalise pangaülekandega. Rakendus
+  näitab saaja nime, IBAN-i (admin seadistab) ja soovitatud selgitust kopeerimisnuppudega.
+- Liige teatab summa ja valikulise viite → `PENDING` (`BANK_TRANSFER`). Saldot muudavad ainult
+  `CONFIRMED` maksed: admin kinnitab pärast laekumise nägemist pangas. Admin saab makse ka kohe
+  kinnitatuna sisestada.
 
 Ladu
 - `product.stock_qty` on vahemälu tema `stock_movement.quantity_delta` summast.
@@ -150,8 +153,8 @@ Arve e-kirjad
   oktoober 2026"). Liige teatab maksest ikka rakenduses ja admin kinnitab selle tavapäraselt.
 - Lihttekstiga e-kiri SMTP kaudu. Iga kiri saadetakse ja salvestatakse eraldi, nii et üks halb
   aadress ei peata teisi; ebaõnnestunud kirjad näitavad viga ja neid saab uuesti saata.
-- Seaded tulevad konfiguratsioonist, mitte andmebaasist: `revkassa.invoice.org-name`, `.iban`,
-  `.due-days`; kõigile kirjadele (arved, parooli lingid) `revkassa.mail.from`, `.reply-to`,
+- Saaja nimi ja IBAN on andmebaasis (`organisation`), admin muudab neid rakenduses; muud seaded
+  tulevad konfiguratsioonist: `revkassa.invoice.due-days`; kõigile kirjadele (arved, parooli lingid) `revkassa.mail.from`, `.reply-to`,
   `revkassa.app-url` (linkide jaoks) ning standardsed `spring.mail.*` SMTP seaded (saladused
   keskkonnamuutujatest). Ilma `spring.mail.host`-ita (arendus) kirjutatakse kirjad logisse.
 
@@ -262,17 +265,19 @@ AI abiline (valikuline)
 | `GET /api/me/entries` | liige | saldo ajalugu |
 | `GET /api/me/favourites` | liige | lemmiktoodete id-d järjekorras |
 | `PUT /api/me/favourites` | liige | `{productIds:[...]}` — asendab järjestatud nimekirja |
-| `POST /api/payments` | liige | teata maksest |
-| `GET /api/me/payments?status=PENDING` | liige | oma kinnitamist ootavad maksed |
+| `GET /api/payments/details` | liige | `{recipient, iban, description}` pangaülekande jaoks |
+| `POST /api/payments` | liige | `{amountCents, reference?}` — teata maksest |
+| `GET /api/me/payments?status=PENDING` | liige | oma maksed staatuse järgi (`PENDING` / `CONFIRMED` / `REJECTED`) |
 | `GET /api/events` | liige | eelseisvad registreerimiseks avatud üritused, oma tasu ja kas registreerunud |
 | `POST /api/events/{id}/signup` | liige | registreeru; võtab oma taseme tasu (tühistamise endpointi pole) |
 | `GET/POST/PUT /api/admin/products` | admin | toodete ja hindade haldus |
 | `POST /api/admin/stock/deliveries` | admin | tarne sisestamine (toode, kogus, ühiku hind) |
 | `POST /api/admin/stock/stocktake` | admin | loetud kogused → parandused |
 | `POST /api/admin/stock/write-offs` | admin | katki / aegunud |
+| `GET/PUT /api/admin/organisation` | admin | `{name, iban, version}` — saaja nimi ja IBAN maksete ja arvete jaoks |
 | `GET /api/admin/payments?status=PENDING` | admin | kinnitamist ootavad maksed |
 | `POST /api/admin/payments/{id}/confirm`, `/reject` | admin | otsusta makse üle |
-| `POST /api/admin/payments` | admin | `{memberId, amountCents, method, reference}` → makse kohe `CONFIRMED` |
+| `POST /api/admin/payments` | admin | `{memberId, amountCents, reference}` → makse kohe `CONFIRMED` |
 | `GET/POST/PUT /api/admin/members` | admin | liikmed ja rollid |
 | `GET /api/admin/members/{id}/purchases` | admin | liikme ostud, uuemad ees (tagasivõtmine: `POST /api/purchases/{id}/undo`) |
 | `POST /api/admin/members/{id}/pin` | admin | määra või lähtesta liikme PIN |

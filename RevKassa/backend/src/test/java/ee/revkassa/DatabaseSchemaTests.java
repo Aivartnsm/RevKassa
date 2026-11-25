@@ -17,7 +17,7 @@ class DatabaseSchemaTests {
 			"member", "product", "purchase", "purchase_line", "payment", "member_favourite",
 			"account_entry", "stock_movement", "membership_fee", "membership_charge", "invoice",
 			"membership_level", "event", "event_level_fee", "event_participant", "event_budget_line",
-			"trusted_device", "password_token");
+			"trusted_device", "password_token", "organisation");
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
@@ -29,6 +29,12 @@ class DatabaseSchemaTests {
 				String.class);
 
 		assertThat(tables).containsExactlyInAnyOrderElementsOf(TABLES);
+	}
+
+	@Test
+	void organisationHasExactlyOneRow() {
+		assertThat(jdbcTemplate.queryForObject("select count(*) from organisation where id = 1", Integer.class)).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("select count(*) from organisation", Integer.class)).isEqualTo(1);
 	}
 
 	@Test

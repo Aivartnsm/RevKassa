@@ -21,9 +21,7 @@ class MailConfigTest {
     private static final String[] COMPLETE_SETTINGS = {
             "spring.mail.host=smtp.example.org",
             "revkassa.app-url=https://kassa.example.org",
-            "revkassa.mail.from=RevKassa <kassa@example.org>",
-            "revkassa.invoice.org-name=Näidisklubi MTÜ",
-            "revkassa.invoice.iban=EE382200221020145685"
+            "revkassa.mail.from=RevKassa <kassa@example.org>"
     };
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
@@ -53,8 +51,8 @@ class MailConfigTest {
             assertThat(context.getStartupFailure()).rootCause()
                     .hasMessageContaining("revkassa.app-url")
                     .hasMessageContaining("revkassa.mail.from")
-                    .hasMessageContaining("revkassa.invoice.org-name")
-                    .hasMessageContaining("revkassa.invoice.iban");
+                    // payee name and IBAN are in the database since B39, set by an admin
+                    .message().doesNotContain("org-name").doesNotContain("iban");
         });
     }
 
@@ -98,8 +96,6 @@ class MailConfigTest {
                     assertThat(properties.appUrl()).isEqualTo("https://kassa.example.org");
                     assertThat(properties.mail().from()).isEqualTo("RevKassa <kassa@example.org>");
                     assertThat(properties.mail().replyTo()).isEqualTo("juhatus@example.org");
-                    assertThat(properties.invoice().orgName()).isEqualTo("Näidisklubi MTÜ");
-                    assertThat(properties.invoice().iban()).isEqualTo("EE382200221020145685");
                     assertThat(properties.invoice().dueDays()).isEqualTo(14);
                 });
     }

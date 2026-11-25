@@ -3,6 +3,7 @@ package ee.revkassa.service;
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum.AccountEntryLinkEnum;
 import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.payment.Payment;
 import ee.revkassa.persistence.purchase.Purchase;
 
 import java.util.Map;
@@ -12,12 +13,12 @@ import java.util.Objects;
  * One balance change to post with AccountService.post. Only valid combinations can be built: the type fixes the sign
  * of the amount, which link must be present (and that no other is) and whether a note is required. Breaking a rule is
  * a programming error (IllegalArgumentException), not a user error: callers validate user input first.
- * Create it with the method for the type; each task adds its own (payment in B15, ...).
+ * Create it with the method for the type; each task adds its own (membership fee in B22, ...).
  *
  * @param createdBy the member or admin who caused it; null only when the app itself posts (monthly fee job)
  */
 public record AccountPosting(Member member, AccountEntryTypeEnum type, long amountCents, Purchase purchase,
-                             Long paymentId, Long membershipChargeId, Long eventParticipantId, String note,
+                             Payment payment, Long membershipChargeId, Long eventParticipantId, String note,
                              Member createdBy) {
 
     public AccountPosting {
@@ -28,7 +29,7 @@ public record AccountPosting(Member member, AccountEntryTypeEnum type, long amou
         }
         validateLinks(type, Map.of(
                 AccountEntryLinkEnum.PURCHASE, purchase != null,
-                AccountEntryLinkEnum.PAYMENT, paymentId != null,
+                AccountEntryLinkEnum.PAYMENT, payment != null,
                 AccountEntryLinkEnum.MEMBERSHIP_CHARGE, membershipChargeId != null,
                 AccountEntryLinkEnum.EVENT_PARTICIPANT, eventParticipantId != null));
         note = note == null || note.isBlank() ? null : note.strip();
@@ -50,6 +51,14 @@ public record AccountPosting(Member member, AccountEntryTypeEnum type, long amou
     public static AccountPosting purchaseReversal(Member member, Purchase purchase, Member reversedBy) {
         return new AccountPosting(member, AccountEntryTypeEnum.PURCHASE_REVERSAL, purchase.getTotalCents(), purchase,
                 null, null, null, null, reversedBy);
+    }
+
+    /**
+     * A payment an admin confirmed (or entered as confirmed): its whole amount to the payer's balance.
+     */
+    public static AccountPosting payment(Payment payment, Member admin) {
+        return new AccountPosting(payment.getMember(), AccountEntryTypeEnum.PAYMENT, payment.getAmountCents(), null,
+                payment, null, null, null, admin);
     }
 
     /**
