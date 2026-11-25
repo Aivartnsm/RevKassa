@@ -26,6 +26,9 @@ public enum Error {
     TOO_MANY_PASSWORD_RESETS("Too many password reset requests. Try again later.", 122),
     EMAIL_NOT_SENT("Email could not be sent. Try again later.", 123),
     WRONG_CURRENT_PASSWORD("Current password is wrong.", 124),
+    DUPLICATE_PRODUCT_IN_STOCKTAKE("A product is counted more than once.", 125),
+    PRODUCT_NOT_AVAILABLE("A product is no longer for sale.", 126),
+    PRICES_CHANGED("Prices have changed. Check the new total and confirm again.", 127),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

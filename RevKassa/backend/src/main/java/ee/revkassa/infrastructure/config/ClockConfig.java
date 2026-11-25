@@ -4,13 +4,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneId;
 
 @Configuration
 public class ClockConfig {
 
+    // The club's time zone: the clock and every time in API responses use it
+    public static final ZoneId APP_ZONE = ZoneId.of("Europe/Tallinn");
+
+    // Ticks in microseconds like PostgreSQL timestamptz, so a time returned right after saving is the same as the one
+    // read back from the database later
     @Bean
     public Clock clock() {
-        return Clock.system(ZoneId.of("Europe/Tallinn"));
+        return Clock.tick(Clock.system(APP_ZONE), Duration.ofNanos(1_000));
     }
 }

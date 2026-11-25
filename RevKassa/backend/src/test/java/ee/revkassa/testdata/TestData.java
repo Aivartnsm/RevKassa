@@ -3,6 +3,7 @@ package ee.revkassa.testdata;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRoleEnum;
 import ee.revkassa.persistence.membershiplevel.MembershipLevel;
+import ee.revkassa.persistence.product.Product;
 import ee.revkassa.persistence.trusteddevice.TrustedDevice;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,21 @@ public class TestData {
         device.setRevokedBy(revokedBy);
         device.setRevokedAt(OffsetDateTime.now());
         entityManager.flush();
+    }
+
+    public Product product(String name, long priceCents, int sortOrder, boolean active) {
+        Product product = new Product();
+        product.setName(name);
+        product.setStyle("Lager");
+        product.setVolumeMl(500);
+        product.setPriceCents(priceCents);
+        product.setStockQty(0);
+        product.setLowStockThreshold(6);
+        product.setSortOrder(sortOrder);
+        product.setActive(active);
+        product.setCreatedAt(OffsetDateTime.now());
+        product.setUpdatedAt(OffsetDateTime.now());
+        return persist(product);
     }
 
     private <T> T persist(T entity) {

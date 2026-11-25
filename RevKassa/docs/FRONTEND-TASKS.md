@@ -112,7 +112,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 - [ ] **F07 · Tooted** (M) — vajab B07
   Nimekiri hinna, laoseisu, staatusesildi (OK / Vähe / Loe üle / Peidetud) ja näita/peida
   lülitiga; loomise/muutmise vorm (nimi, stiil, maht, hind eurodes, madala laoseisu piir,
-  järjekord). Laual tabel, telefonis nimekiri → detail.
+  järjekord). Laual tabel, telefonis nimekiri → detail. Muutmisel saada tagasi laaditud `version`;
+  409 (`105`) → "Keegi muutis seda toodet vahepeal, laadi uuesti". Laoseisu siin ei muudeta (tarne/inventuur).
 
 - [ ] **F08 · Tarne sisestamine** (S) — vajab B08
   Laual üks rida toote kohta koguse ja valikulise ühiku hinnaga. Telefonis toote detail
@@ -120,6 +121,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F09 · Inventuur ja mahakandmine** (S) — vajab B09
   Loetud koguse väljad elava vahega; tühjad read jäetakse vahele; mahakandmine märkusega.
+  Lõplik vahe tuleb vastusest (`difference`): server arvutab selle salvestamise hetke laoseisust, nii et
+  vahepeal müüdud pudelid lähevad arvesse. Veakood 125 → "Toode on loendis kaks korda".
 
 ## Verstapost 3 — Ostmine (liige, mobile-first)
 
@@ -136,6 +139,13 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Tellimuse vaade −/+ ridadega, summa, saldo pärast, külaliste vihje; alumisel ribal
   "Lisa x € minu saldole". Valmis-vaade: summa, uus saldo, Osta veel, Valmis (logib välja),
   Võta tagasi (peidetud 10 min pärast). Topeltvajutus ei saada kaks korda (nupp keelatud päringu ajal).
+  `POST /api/purchases`: ostukorvile tehakse üks `requestId` (`crypto.randomUUID()`), mis saadetakse
+  **sama** ka korduskatsel (võrguviga, aegunud vastus) — server ei võta raha kaks korda (200 = juba
+  salvestatud); pärast õnnestunud ostu uus id. `expectedTotalCents` = summa, mida liige nägi.
+  409 `127` (hinnad muutusid) → laadi tooted uuesti, näita teadet "Hinnad on muutunud" ja kinnitusakent
+  uue summaga ("Kas ostad ikka? x €"); nõustumisel saada uuesti uue summaga (sama `requestId`).
+  403 `126` → "Mõni toode pole enam müügil", laadi tooted uuesti. "Võta tagasi" peitmise aeg =
+  vastuse `undoableUntil` (serveri aeg, mitte tahvli kell).
 
 - [ ] **F12 · Lemmikute kohandamine** (S) — vajab B13
   Tärn sisse/välja, liiguta üles/alla, "Valmis" salvestab `PUT /api/me/favourites` kaudu.

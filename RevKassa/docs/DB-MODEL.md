@@ -122,6 +122,7 @@ Link kehtib, kui `used_at is null` ja `expires_at > now()`. Ühekordne.
 | created_at | timestamptz not null | |
 | reversed_at | timestamptz | seatakse tagasivõtmisel |
 | reversed_by | bigint FK member | liige ise või admin |
+| request_id | uuid | unikaalne; kliendi genereeritud ostu id — sama id uuesti (katkenud ühendus, topeltvajutus) tagastab juba salvestatud ostu, uut ei tehta |
 
 ### purchase_line
 | veerg | tüüp | märkused |

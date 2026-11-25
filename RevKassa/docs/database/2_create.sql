@@ -60,6 +60,7 @@ CREATE TABLE purchase (
     created_at  timestamptz NOT NULL DEFAULT now(),
     reversed_at timestamptz,
     reversed_by bigint,
+    request_id  uuid,
     CONSTRAINT purchase_pk PRIMARY KEY (id),
     CONSTRAINT ck_purchase_total_cents CHECK (total_cents > 0),
     CONSTRAINT ck_purchase_status CHECK (status IN ('COMPLETED', 'REVERSED'))
@@ -339,6 +340,7 @@ ALTER TABLE stock_movement ADD CONSTRAINT fk_stock_movement_created_by FOREIGN K
 CREATE UNIQUE INDEX ux_member_email ON member (lower(email));
 CREATE UNIQUE INDEX ux_member_pin_hmac ON member (pin_hmac);
 CREATE INDEX ix_purchase_member_id_created_at ON purchase (member_id, created_at DESC);
+CREATE UNIQUE INDEX ux_purchase_request_id ON purchase (request_id);
 CREATE INDEX ix_payment_status_reported_at ON payment (status, reported_at);
 CREATE UNIQUE INDEX ux_account_entry_payment_id ON account_entry (payment_id);
 CREATE INDEX ix_account_entry_member_id_created_at ON account_entry (member_id, created_at DESC);

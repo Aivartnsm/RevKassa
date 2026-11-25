@@ -38,6 +38,9 @@ Spring Boot 4, Java 21, Gradle. Pakett `ee.revkassa`. Failide paigutus: [docs/ba
 ## Domeenireeglid, mida ei tohi mööda minna
 
 - Raha on sentides `long` (SQL `bigint`), mitte kunagi `double`. Eurodeks vormindatakse ainult UI-s.
+- Aeg: `Clock` bean (`ClockConfig.APP_ZONE` = Europe/Tallinn, tiksub mikrosekundites nagu Postgres). API vastustes on
+  iga `OffsetDateTime` ISO-8601 kujul Tallinna ajas (`+02:00` / suvel `+03:00`) — `OffsetDateTimeSerializer` teeb seda
+  ise, ka andmebaasist (UTC) loetud aegadega. Ära vorminda aegu käsitsi.
 - Saldo muutub ainult `AccountService.post(...)` kaudu: kirjutab `account_entry` rea **ja** uuendab `member.balance_cents` samas transaktsioonis.
 - Laoseis muutub ainult `StockService.move(...)` kaudu: kirjutab `stock_movement` rea **ja** uuendab `product.stock_qty`.
 - Pearaamatu ridu (`account_entry`, `stock_movement`) ei muudeta ega kustutata; parandus on uus rida.

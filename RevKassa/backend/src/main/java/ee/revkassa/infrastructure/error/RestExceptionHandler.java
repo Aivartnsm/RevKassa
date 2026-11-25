@@ -1,5 +1,6 @@
 package ee.revkassa.infrastructure.error;
 
+import ee.revkassa.infrastructure.exception.ConflictException;
 import ee.revkassa.infrastructure.exception.DataNotFoundException;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.PrimaryKeyNotFoundException;
@@ -96,6 +97,12 @@ public class RestExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ApiError handleMethodArgumentTypeMismatchException() {
         return createApiError(Error.INVALID_REQUEST);
+    }
+
+    @ResponseStatus(HttpStatus.CONFLICT)
+    @ExceptionHandler(ConflictException.class)
+    public ApiError handleConflictException(ConflictException exception) {
+        return createApiError(exception.getError());
     }
 
     @ResponseStatus(HttpStatus.CONFLICT)

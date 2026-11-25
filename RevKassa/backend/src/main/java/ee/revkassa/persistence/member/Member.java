@@ -6,9 +6,12 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.OffsetDateTime;
 
+// Only changed columns are written: saving a member form must never write back a stale balance_cents
+@DynamicUpdate
 @Getter
 @Setter
 @Entity
@@ -39,6 +42,8 @@ public class Member {
     @Column(name = "role", nullable = false, length = Integer.MAX_VALUE)
     private MemberRoleEnum role;
 
+    // Cache of sum(account_entry.amount_cents); changed only by AccountService.post with one SQL update,
+    // so this field can be out of date in memory after a posting in the same transaction
     @NotNull
     @ColumnDefault("0")
     @Column(name = "balance_cents", nullable = false)

@@ -146,42 +146,71 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 2 — Tooted ja ladu
 
-- [ ] **B07 · Tooted** (M) — pärast B04
+- [x] **B07 · Tooted** (M) — pärast B04
   `Product` entiteet. `GET /api/products` (ainult aktiivsed, `sort_order` järgi, hinna ja laoseisuga).
   Admin: `GET/POST/PUT /api/admin/products` (nimi, stiil, maht, hind, madala laoseisu piir,
   järjekord, aktiivne). Hind > 0; uuendamisel optimistlik lukk (vananenud versioon → 409).
+  Tehtud: liige saab `ProductDto` (id, nimi, stiil, maht, hind, laoseis); admin `AdminProductDto` (+ piir,
+  järjekord, aktiivne, ajad, `version`). `POST` → 201, laoseis algab 0-st; `PUT /api/admin/products/{id}`
+  vajab laaditud `version`-it (vanem → 409 `105`). Laoseisu vormiga muuta ei saa (ainult laopearaamat, B08).
+  Tooteid ei kustutata — peitmine `active = false`. Kinnitust/kustutamist pole.
   Valmis, kui: CRUD, valideerimine ning liikme vs admini ligipääs on testitud.
 
-- [ ] **B08 · Laopearaamat ja tarned** (M) — pärast B07
+- [x] **B08 · Laopearaamat ja tarned** (M) — pärast B07
   `StockMovement` entiteet; `StockService.move(product, type, delta, …)` kirjutab liikumise ja
   uuendab `product.stock_qty` ühes transaktsioonis — ainus viis laoseisu muuta.
   `POST /api/admin/stock/deliveries` (read: toode, kogus > 0, valikuline ühiku hind).
+  Tehtud: `StockService.move(product, type, delta, unitCostCents, note, createdBy)` tagastab uue laoseisu;
+  `stock_qty` muudetakse **ühe SQL lausega** (`stock_qty + delta`), mis ei kaota paralleelseid muudatusi ega
+  tõsta toote `version`-it; `Product` on `@DynamicUpdate`, nii et toote vorm ei kirjuta kunagi vana laoseisu üle.
+  Tarne `{lines:[{productId, quantity, unitCostCents?}], note?}` → 201 + uus laoseis toote kohta; kõik read või
+  mitte midagi (tundmatu toode → 404). Max 100 rida. `StockMovement.purchaseId` on praegu lihtne id — B11 teeb
+  sellest seose `Purchase`-iga.
   Valmis, kui: invariandi test `stock_qty = sum(quantity_delta)` läbib pärast tarneid.
 
-- [ ] **B09 · Inventuur ja mahakandmised** (S) — pärast B08
+- [x] **B09 · Inventuur ja mahakandmised** (S) — pärast B08
   `POST /api/admin/stock/stocktake` (loetud kogus toote kohta → `STOCKTAKE` liikumine vahe
   kohta, võrdsuse korral mitte midagi). `POST /api/admin/stock/write-offs` (kogus + märkus).
+  Tehtud: inventuur `{lines:[{productId, countedQty ≥ 0}], note?}` → 201 + toote kohta `previousStockQty`,
+  `countedQty`, `difference`. Vahe arvutatakse **salvestamise hetke** laoseisust lukustatud ridadelt (vahepealne
+  müük ei moonuta), lukud id järjekorras. Sama toode kaks korda → 403 `125`. Mahakandmine
+  `{lines:[{productId, quantity > 0}], note}` — märkus kohustuslik, laoseis võib minna alla nulli.
+  B11 peab müügil laoseisu muutma toodete id järjekorras (ummikseisu vältimiseks).
   Valmis, kui: vahed ja tühi juhtum on testitud.
 
 ## Verstapost 3 — Ostmine
 
-- [ ] **B10 · Rahapearaamat** (S) — pärast B03
-  `AccountEntry` entiteet; `AccountService.post(member, type, amount, …)` kirjutab rea ja
-  uuendab `member.balance_cents` ühes transaktsioonis — ainus viis saldot muuta.
-  Valmis, kui: invariandi test `balance_cents = sum(amount_cents)` läbib.
+- [x] **B10 · Rahapearaamat** (S/M) — pärast B03
+  `AccountEntry` entiteet (seosed ostu/makse/tasu/osalejaga lihtsate id-dena, kuni need entiteedid
+  tekivad). `AccountService.post(AccountPosting)` kirjutab rea ja muudab `member.balance_cents`-i **ühe
+  SQL lausega** samas transaktsioonis (ei kaota paralleelseid muudatusi, `version` ei muutu; `Member` on
+  `@DynamicUpdate`) ja tagastab uue saldo — ainus viis saldot muuta. `AccountPosting` kontrollib tüübi
+  järgi märki ja seost; `ADJUSTMENT` / `MEMBERSHIP_FEE_WAIVER` vajavad märkust. Iga hilisem task lisab
+  oma loomismeetodi (B10-s `adjustment`).
+  Valmis, kui: invariant `balance_cents = sum(amount_cents)` kehtib iga liikme kohta pärast kandeid;
+  kaks samaaegset kannet samale liikmele ei kaota midagi; vale märk, puuduv märkus ja summa 0 lükatakse tagasi.
+  Tehtud: reeglid tüübi enum'is (`AccountEntryTypeEnum`: märk, nõutav seos, märkus), `AccountPosting`
+  (`service/`) kontrollib neid juba loomisel. Logis ainult id-d ja tüüp (summad/saldod on liikme finantsandmed).
 
-- [ ] **B11 · Ostud** (M) — pärast B08, B10
-  `POST /api/purchases` `{lines:[{productId, quantity}]}`: üks transaktsioon kirjutab
-  `purchase`, `purchase_line` (hind kopeeritud), ühe `PURCHASE` rea summaga −total ja ühe
-  `SALE` liikumise rea kohta. Mitteaktiivne toode → `ForbiddenException`. Saldo limiiti pole;
-  laoseis võib minna negatiivseks.
-  Valmis, kui: testid kontrollivad iga kirjutatud rida, mõlemat invarianti ning et sama
-  toote/liikme samaaegsed ostud ei kaota uuendusi.
+- [x] **B11 · Ostud** (M/L) — pärast B08, B10
+  `POST /api/purchases` `{requestId, expectedTotalCents, lines:[{productId, quantity}]}` (1–50 rida, kogus
+  1–99, sama toode liidetakse). Üks transaktsioon kirjutab `purchase` (+ `request_id`, unikaalne),
+  `purchase_line` (hind kopeeritakse serverist), ühe `PURCHASE` rea summaga −total ja ühe `SALE` liikumise rea
+  kohta. Lukud: liikme rida, siis tooted id järjekorras. Summa erineb `expectedTotalCents`-ist → 409 `127`
+  (hinnad muutusid); peidetud toode → 403 `126`; tundmatu → 404; neil juhtudel ei kirjutata midagi. Sama
+  `requestId` uuesti → juba salvestatud ost (200), uut ei tehta; teise liikme `requestId` → 403 `104`.
+  Vastus: ost, read, uus saldo, `undoableUntil` (+10 min serveri ajas). `purchase_id` `account_entry`-s ja
+  `stock_movement`-is on seos. Laoseisu muutused `StockMove` kirje kaudu (nagu `AccountPosting`). Saldo
+  limiiti pole; laoseis võib minna negatiivseks. `Clock` tiksub mikrosekundites (nagu Postgres).
+  Valmis, kui: testid kontrollivad iga kirjutatud rida, mõlemat invarianti, hinnamuutust, korduvat
+  `requestId`-d ning et samaaegsed ostud (sama toode, sama liige, ost + inventuur) ei kaota uuendusi ega
+  jää ummikusse.
 
 - [ ] **B12 · Tagasivõtmine** (S) — pärast B11
   `POST /api/purchases/{id}/undo`: liige oma ostu 10 minuti jooksul, admin igal ajal.
   Märgib `REVERSED`, kirjutab `PURCHASE_REVERSAL` ja `SALE_REVERSAL` read. Teist korda →
-  `ForbiddenException`.
+  `ForbiddenException`. Lukud samas järjekorras nagu ostul (liige, siis tooted id järgi); lisa
+  `AccountPosting.purchaseReversal` ja `StockMove.saleReversal`; 10 min piir `PurchaseService.UNDO_WINDOW`.
   Valmis, kui: 10 minuti piir (fikseeritud `Clock`), omanikukontroll ja topelt-tagasivõtmine on testitud.
 
 - [ ] **B13 · Lemmikud** (S) — pärast B07

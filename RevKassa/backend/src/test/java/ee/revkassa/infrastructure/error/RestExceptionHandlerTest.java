@@ -1,6 +1,8 @@
 package ee.revkassa.infrastructure.error;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -122,6 +124,18 @@ public class RestExceptionHandlerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.dateTime").value("2026-10-28T18:42:00+02:00"))
                 .andExpect(jsonPath("$.money").value(-1250));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-10-28T16:42:00Z, 2026-10-28T18:42:00+02:00",
+            "2026-07-01T09:00:00Z, 2026-07-01T12:00:00+03:00",
+            "2026-10-28T18:42:00+02:00, 2026-10-28T18:42:00+02:00",
+            "2026-11-25T01:44:26.054152Z, 2026-11-25T03:44:26.054152+02:00"})
+    void timesAreWrittenInTallinnTime(String time, String expected) throws Exception {
+        mockMvc.perform(get("/test/utc-time").param("time", time))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dateTime").value(expected));
     }
 
     @Test
