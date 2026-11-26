@@ -2,6 +2,7 @@ package ee.revkassa.controller.me;
 
 import ee.revkassa.controller.common.dto.MemberSessionDto;
 import ee.revkassa.controller.me.dto.ChangePasswordRequestDto;
+import ee.revkassa.controller.me.dto.ChangePinRequestDto;
 import ee.revkassa.infrastructure.error.ApiError;
 import ee.revkassa.infrastructure.security.MemberPrincipal;
 import ee.revkassa.service.MeService;
@@ -69,5 +70,32 @@ public class MeController {
     public void changePassword(@RequestBody @Valid ChangePasswordRequestDto changePasswordRequest,
                                @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
         meService.changePassword(principal, changePasswordRequest.getCurrentPassword(), changePasswordRequest.getNewPassword());
+    }
+
+    @PutMapping("/pin")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Change the logged-in member's own PIN",
+            description = "The current PIN must match. The new PIN must be 6 digits, differ from the current one and not "
+                    + "be used by anyone. Wrong current PINs and unavailable new PINs are limited per member like logins. "
+                    + "Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "PIN changed: the old PIN stops working at once"),
+            @ApiResponse(responseCode = "400", description = "Current or new PIN missing or not exactly 6 digits (errorCode 103)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Current PIN wrong (143, with remainingAttempts), new PIN not "
+                    + "available (144, with remainingAttempts), new PIN same as current (145), member deactivated (112) "
+                    + "or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "429", description = "Too many failed attempts (113): Retry-After header gives the "
+                    + "seconds left, nextLockoutSeconds how long the next failure will lock",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public void changePin(@RequestBody @Valid ChangePinRequestDto changePinRequest,
+                          @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        meService.changePin(principal, changePinRequest.getCurrentPin(), changePinRequest.getNewPin());
     }
 }

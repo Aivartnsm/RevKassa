@@ -9,6 +9,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.random.RandomGenerator;
@@ -40,11 +41,19 @@ public class PinService {
         return memberRepository.findByPinHmac(hash(pin));
     }
 
+    public boolean matches(String pin, String pinHmac) {
+        return MessageDigest.isEqual(hash(pin).getBytes(StandardCharsets.UTF_8), pinHmac.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public boolean isTaken(String pin) {
+        return memberRepository.existsByPinHmac(hash(pin));
+    }
+
     public String generateUniquePin() {
         String pin;
         do {
             pin = randomPin();
-        } while (memberRepository.existsByPinHmac(hash(pin)));
+        } while (isTaken(pin));
         return pin;
     }
 

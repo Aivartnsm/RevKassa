@@ -1,5 +1,6 @@
 package ee.revkassa.infrastructure.security;
 
+import ee.revkassa.infrastructure.error.Error;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.TooManyAttemptsException;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import java.util.Map;
 
 /**
  * Brute-force protection for PIN (per trusted device) and password (per client IP) login, and for the current
- * password when a member changes it (per member).
+ * password or PIN when a member changes it (per member).
  * 5 wrong attempts lock for 1 minute. After that every wrong attempt locks again, each time longer:
  * 5 min, 10 min, 30 min, 1 h, then 1 day. A successful login clears everything for that key.
  * While locked the PIN or password is not checked at all. Kept in memory: the app runs as a single instance,
@@ -48,7 +49,15 @@ public class LoginLockoutService {
      * Counts one wrong attempt and returns the exception to throw: 403 with remainingAttempts before the first
      * lockout, otherwise 429.
      */
-    public synchronized RuntimeException registerFailure(LockoutKey key) {
+    public RuntimeException registerFailure(LockoutKey key) {
+        return registerFailure(key, key.type().getWrongAttemptError());
+    }
+
+    /**
+     * Same as registerFailure(key), but answers a not-yet-locked attempt with the given error instead of the
+     * type's own, e.g. "PIN not available" that must be limited like a wrong PIN.
+     */
+    public synchronized RuntimeException registerFailure(LockoutKey key, Error wrongAttemptError) {
         Instant now = now();
         removeIdleKeysIfTooMany(now);
         Attempts attempts = attemptsByKey.computeIfAbsent(key, k -> new Attempts());
@@ -58,7 +67,7 @@ public class LoginLockoutService {
             return lockedException(key, attempts);
         }
         if (attempts.lockoutLevel == 0 && ++attempts.failures < ATTEMPTS_BEFORE_FIRST_LOCKOUT) {
-            return new ForbiddenException(key.type().getWrongAttemptError(), ATTEMPTS_BEFORE_FIRST_LOCKOUT - attempts.failures);
+            return new ForbiddenException(wrongAttemptError, ATTEMPTS_BEFORE_FIRST_LOCKOUT - attempts.failures);
         }
         lock(key, attempts, now);
         return lockedException(key, attempts);

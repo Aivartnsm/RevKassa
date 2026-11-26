@@ -53,6 +53,21 @@ class PinServiceTest {
     }
 
     @Test
+    void matches_onlyTheHashedPin() {
+        assertThat(pinService.matches("111111", KASPAR_PIN_HMAC)).isTrue();
+        assertThat(pinService.matches("111112", KASPAR_PIN_HMAC)).isFalse();
+    }
+
+    @Test
+    void isTaken_trueOnlyOnceAMemberHasThePin() {
+        assertThat(pinService.isTaken("987650")).isFalse();
+
+        testData.member("is-taken@example.org", pinService.hash("987650"));
+
+        assertThat(pinService.isTaken("987650")).isTrue();
+    }
+
+    @Test
     void generateUniquePin_padsSmallNumberWithLeadingZeros() {
         when(randomGenerator.nextInt(anyInt())).thenReturn(42);
 

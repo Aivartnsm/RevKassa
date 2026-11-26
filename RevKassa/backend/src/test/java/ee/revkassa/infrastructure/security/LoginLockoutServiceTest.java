@@ -163,6 +163,23 @@ class LoginLockoutServiceTest {
         assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forDevice(7L))).doesNotThrowAnyException();
     }
 
+    @Test
+    void pinChange_hasOwnCounterAndCanAnswerWithAnotherErrorOnTheSameCounter() {
+        LockoutKey key = LockoutKey.forPinChange(7L);
+
+        RuntimeException wrong = lockoutService.registerFailure(key);
+        RuntimeException notAvailable = lockoutService.registerFailure(key, Error.PIN_NOT_AVAILABLE);
+        failTimes(key, 2);
+        RuntimeException locked = lockoutService.registerFailure(key);
+
+        assertThat(((ForbiddenException) wrong).getError()).isEqualTo(Error.WRONG_CURRENT_PIN);
+        assertThat(((ForbiddenException) notAvailable).getError()).isEqualTo(Error.PIN_NOT_AVAILABLE);
+        assertThat(((ForbiddenException) notAvailable).getRemainingAttempts()).isEqualTo(3);
+        assertThat(((TooManyAttemptsException) locked).getError()).isEqualTo(Error.TOO_MANY_WRONG_PINS);
+        assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forDevice(7L))).doesNotThrowAnyException();
+        assertThatCode(() -> lockoutService.ensureNotLocked(LockoutKey.forPasswordChange(7L))).doesNotThrowAnyException();
+    }
+
     private void failTimes(LockoutKey key, int times) {
         for (int i = 0; i < times; i++) {
             lockoutService.registerFailure(key);

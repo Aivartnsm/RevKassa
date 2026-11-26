@@ -44,6 +44,9 @@ public enum Error {
     FEE_MONTH_ALREADY_CHARGED("This month's fee has already been charged for this level.", 140),
     FEE_ALREADY_WAIVED("This fee has already been waived.", 141),
     DATE_RANGE_INVALID("The start date must not be after the end date.", 142),
+    WRONG_CURRENT_PIN("Current PIN is wrong.", 143),
+    PIN_NOT_AVAILABLE("This PIN cannot be used. Choose another one.", 144),
+    NEW_PIN_SAME_AS_CURRENT("The new PIN must differ from the current one.", 145),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

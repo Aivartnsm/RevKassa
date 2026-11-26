@@ -283,13 +283,20 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   lines, reversedAt, reversedByName}], page, hasMore}` — read struktuurina (`PurchaseLineDto`), UI paneb kokku
   "2 × Saku Originaal". PIN-i ei logita.
 
-- [ ] **B34 · Liige muudab oma PIN-i** (S) — pärast B05
+- [x] **B34 · Liige muudab oma PIN-i** (S) — pärast B05
   `PUT /api/me/pin` `{currentPin, newPin}`: praegune PIN peab klappima (vale → `ForbiddenException`
   ja loeb B05 lukustuse loendurisse — seadme kaupa PIN-sessioonis, IP kaupa parooliga sessioonis), uus täpselt 6 numbrit (400), eelmisest erinev ja unikaalne
   (võetud → `ForbiddenException`, teade ei ütle, kellele see kuulub). Uuendab `pin_hmac` ja
   `pin_changed_at`; PIN-e ei logita.
   Valmis, kui: õnnestumine (vana PIN kehtetu, uus töötab), vale praegune PIN, vale formaat, sama
   PIN ja võetud PIN on testitud.
+  Tehtud: vastus 204; töötab nii PIN- kui ka parooliga sessioonis. Vale praegune → 403 `143 WRONG_CURRENT_PIN`,
+  võetud uus → 403 `144 PIN_NOT_AVAILABLE` (mõlemad `remainingAttempts`-iga), sama mis praegune → 403
+  `145 NEW_PIN_SAME_AS_CURRENT` (ei loe katseks), lukus → 429 `113`. **Erinevus taskist:** katsed loetakse
+  **liikme kaupa** (`LockoutTypeEnum.PIN_CHANGE`, nagu B37), mitte seadme/IP kaupa — sessioon ei tea seadme id-d
+  ja IP loenduri jagamine annaks vale veakoodi ning lukustaks kogu võrgu sisselogimise. Lukustus ei blokeeri
+  sisselogimist. "Võetud" loetakse samuti valeks katseks, sest muidu saaks endpointiga teiste kehtivaid PIN-e
+  otsida; loendur nullitakse alles eduka muutmise järel.
 
 ## Verstapost 5 — Admini ülevaade
 
