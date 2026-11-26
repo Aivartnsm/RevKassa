@@ -151,29 +151,37 @@ INSERT INTO invoice (id, number, member_id, email_to, amount_cents, due_date, st
 
 
 -- event
-INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Jõulupidu 2026', '2026-12-12 19:00+02', 'Klubiruum', 'Aasta lõpu pidu õhtusöögi ja muusikaga.', 'PLANNED', true, 5, '2026-10-01 12:00+03', '2026-10-01 12:00+03');
-INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Õllematk Tartusse', '2026-11-14 10:00+02', 'Tartu', 'Bussiga kahte väikepruulikotta.', 'PLANNED', true, 5, '2026-10-15 12:00+03', '2026-10-15 12:00+03');
+INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Jõulupidu 2026', '2026-12-12 19:00+02', 'Klubiruum', 'Aasta lõpu pidu õhtusöögi ja muusikaga.', 'PUBLISHED', true, 5, '2026-10-01 12:00+03', '2026-10-01 12:00+03');
+INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Õllematk Tartusse', '2026-11-14 10:00+02', 'Tartu', 'Bussiga kahte väikepruulikotta.', 'PUBLISHED', true, 5, '2026-10-15 12:00+03', '2026-10-15 12:00+03');
 INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Sügisene mälumäng', '2026-10-09 19:00+03', 'Klubiruum', 'Jäi osalejate puudusel ära.', 'CANCELLED', false, 1, '2026-09-20 12:00+03', '2026-10-05 12:00+03');
+INSERT INTO event (id, name, starts_at, location, description, status, signup_open, created_by, created_at, updated_at) VALUES (default, 'Kevadine väljasõit', '2027-05-15 10:00+03', 'Lahemaa', 'Mustand: liikmed seda veel ei näe.', 'DRAFT', false, 1, '2026-11-20 12:00+02', '2026-11-20 12:00+02');
 
 
--- event_level_fee (rea puudumine = 0 €)
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (1, 1, 1500);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (1, 2, 800);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (1, 3, 2000);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (1, 4, 1500);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (1, 5, 0);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (2, 1, 2500);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (2, 2, 2000);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (2, 3, 2500);
-INSERT INTO event_level_fee (event_id, level_id, amount_cents) VALUES (2, 4, 2500);
+-- event_level_fee (rea puudumine = 0 €; valid_from null = algusest, Jõulupeol hind tõuseb 01.12 ja peopäeval)
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 1, null, 1500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 2, null, 800);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 3, null, 2000);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 4, null, 1500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 1, '2026-12-01', 2500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 2, '2026-12-01', 1500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 3, '2026-12-01', 3000);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 4, '2026-12-01', 2500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 1, '2026-12-12', 4000);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 2, '2026-12-12', 2500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 3, '2026-12-12', 4500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 1, 4, '2026-12-12', 4000);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 2, 1, null, 2500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 2, 2, null, 2000);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 2, 3, null, 2500);
+INSERT INTO event_level_fee (id, event_id, level_id, valid_from, amount_cents) VALUES (default, 2, 4, null, 2500);
 
 
--- event_participant (Jõulupidu: 4 aktiivset; Rasmus lisati ja eemaldati)
-INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at) VALUES (default, 1, 5, 3, 2000, 'ACTIVE', 5, '2026-10-02 12:00+03', null);
-INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at) VALUES (default, 1, 1, 1, 1500, 'ACTIVE', 5, '2026-10-12 18:00+03', null);
-INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at) VALUES (default, 1, 3, 2, 800, 'ACTIVE', 1, '2026-10-14 15:00+03', null);
-INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at) VALUES (default, 1, 2, 1, 1500, 'ACTIVE', 2, '2026-10-15 20:00+03', null);
-INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at) VALUES (default, 1, 4, 2, 800, 'REMOVED', 1, '2026-10-13 16:00+03', '2026-10-16 10:00+03');
+-- event_participant (Jõulupidu: 4 aktiivset, kõigilt tasu võetud; Rasmus lisati, temalt võeti tasu ja ta eemaldati)
+INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at, charged_at) VALUES (default, 1, 5, 3, 2000, 'ACTIVE', 5, '2026-10-02 12:00+03', null, '2026-10-02 12:00+03');
+INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at, charged_at) VALUES (default, 1, 1, 1, 1500, 'ACTIVE', 5, '2026-10-12 18:00+03', null, '2026-10-12 18:00+03');
+INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at, charged_at) VALUES (default, 1, 3, 2, 800, 'ACTIVE', 1, '2026-10-14 15:00+03', null, '2026-10-14 15:00+03');
+INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at, charged_at) VALUES (default, 1, 2, 1, 1500, 'ACTIVE', 2, '2026-10-15 20:00+03', null, '2026-10-15 20:00+03');
+INSERT INTO event_participant (id, event_id, member_id, level_id, fee_cents, status, added_by, added_at, removed_at, charged_at) VALUES (default, 1, 4, 2, 800, 'REMOVED', 1, '2026-10-13 16:00+03', '2026-10-16 10:00+03', '2026-10-13 16:00+03');
 
 
 -- event_budget_line

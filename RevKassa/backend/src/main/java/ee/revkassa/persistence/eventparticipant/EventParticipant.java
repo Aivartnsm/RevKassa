@@ -11,8 +11,9 @@ import lombok.Setter;
 import java.time.OffsetDateTime;
 
 /**
- * A member on an event, with the level and fee copied when they were added. Only counted so far (B28); adding and
- * removing come with B29.
+ * A member on an event, with the level and fee copied when they joined (the price period of that day). The fee goes
+ * to the balance only when an admin charges the event's fees (chargedAt). Only counted so far (B28); adding,
+ * charging and removing come with B29.
  */
 @Getter
 @Setter
@@ -60,4 +61,8 @@ public class EventParticipant {
 
     @Column(name = "removed_at")
     private OffsetDateTime removedAt;
+
+    // When the fee went to the balance; null = not charged yet
+    @Column(name = "charged_at")
+    private OffsetDateTime chargedAt;
 }

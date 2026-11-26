@@ -211,15 +211,19 @@ CREATE TABLE event (
     updated_at  timestamptz NOT NULL DEFAULT now(),
     version     bigint      NOT NULL DEFAULT 0,
     CONSTRAINT event_pk PRIMARY KEY (id),
-    CONSTRAINT ck_event_status CHECK (status IN ('PLANNED', 'CLOSED', 'CANCELLED'))
+    CONSTRAINT ck_event_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED')),
+    -- Members can sign up only to a published event
+    CONSTRAINT ck_event_signup_open CHECK (NOT signup_open OR status = 'PUBLISHED')
 );
 
--- Table: event_level_fee
+-- Table: event_level_fee (one level's fee in one price period; valid_from null = from the start)
 CREATE TABLE event_level_fee (
+    id           bigint GENERATED ALWAYS AS IDENTITY,
     event_id     bigint NOT NULL,
     level_id     bigint NOT NULL,
+    valid_from   date,
     amount_cents bigint NOT NULL,
-    CONSTRAINT event_level_fee_pk PRIMARY KEY (event_id, level_id),
+    CONSTRAINT event_level_fee_pk PRIMARY KEY (id),
     CONSTRAINT ck_event_level_fee_amount_cents CHECK (amount_cents >= 0)
 );
 
@@ -234,6 +238,7 @@ CREATE TABLE event_participant (
     added_by   bigint      NOT NULL,
     added_at   timestamptz NOT NULL DEFAULT now(),
     removed_at timestamptz,
+    charged_at timestamptz,
     CONSTRAINT event_participant_pk PRIMARY KEY (id),
     CONSTRAINT ck_event_participant_fee_cents CHECK (fee_cents >= 0),
     CONSTRAINT ck_event_participant_status CHECK (status IN ('ACTIVE', 'REMOVED'))
@@ -377,6 +382,7 @@ CREATE UNIQUE INDEX ux_password_token_token_hash ON password_token (token_hash);
 CREATE INDEX ix_password_token_member_id ON password_token (member_id);
 CREATE UNIQUE INDEX ux_membership_level_name ON membership_level (lower(name));
 CREATE INDEX ix_event_starts_at ON event (starts_at DESC);
+CREATE UNIQUE INDEX ux_event_level_fee_event_id_level_id_valid_from ON event_level_fee (event_id, level_id, valid_from) NULLS NOT DISTINCT;
 CREATE UNIQUE INDEX ux_event_participant_event_id_member_id ON event_participant (event_id, member_id);
 CREATE INDEX ix_event_participant_member_id ON event_participant (member_id);
 CREATE INDEX ix_event_budget_line_event_id_category ON event_budget_line (event_id, category);

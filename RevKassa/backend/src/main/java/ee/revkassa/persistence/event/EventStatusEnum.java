@@ -1,9 +1,12 @@
 package ee.revkassa.persistence.event;
 
 public enum EventStatusEnum {
-    PLANNED,
-    // After the event: read only
+    // Being prepared: members do not see it
+    DRAFT,
+    // Members see it; they can sign up while signupOpen is on
+    PUBLISHED,
+    // After the event, fees charged: read only
     CLOSED,
-    // Fees were returned: read only
+    // Charged fees were returned: read only
     CANCELLED
 }

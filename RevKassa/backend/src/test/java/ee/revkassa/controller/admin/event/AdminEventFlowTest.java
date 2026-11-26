@@ -77,7 +77,7 @@ class AdminEventFlowTest {
     // ---- creating ----
 
     @Test
-    void create_returns201PlannedWithSignupClosedAndAllFeesZero() throws Exception {
+    void create_returns201DraftWithSignupClosedAndAllFeesZero() throws Exception {
         perform(post("/api/admin/events").contentType(MediaType.APPLICATION_JSON).content("""
                 {"name":"  Jõulupidu  ","startsAt":"2030-12-12T19:00:00+02:00","location":" Klubiruum ",
                  "description":"   "}"""))
@@ -87,13 +87,15 @@ class AdminEventFlowTest {
                 .andExpect(jsonPath("$.startsAt").value("2030-12-12T19:00:00+02:00"))
                 .andExpect(jsonPath("$.location").value("Klubiruum"))
                 .andExpect(jsonPath("$.description").doesNotExist())
-                .andExpect(jsonPath("$.status").value("PLANNED"))
+                .andExpect(jsonPath("$.status").value("DRAFT"))
                 .andExpect(jsonPath("$.signupOpen").value(false))
                 .andExpect(jsonPath("$.editable").value(true))
                 .andExpect(jsonPath("$.createdByName").value("Ürituse Admin"))
                 .andExpect(jsonPath("$.version").value(0))
                 .andExpect(jsonPath("$.participantCount").value(0))
                 .andExpect(jsonPath("$.feeIncomeCents").value(0))
+                .andExpect(jsonPath("$.feePeriods.length()").value(1))
+                .andExpect(jsonPath("$.feePeriods[0].validFrom").doesNotExist())
                 .andExpect(jsonPath(feeOf(full) + ".amountCents").value(0))
                 .andExpect(jsonPath(feeOf(youth) + ".levelName").value(youth.getName()));
     }
@@ -142,10 +144,11 @@ class AdminEventFlowTest {
     // ---- reading ----
 
     @Test
-    void list_plannedSoonestFirstThenOthersNewestFirst() throws Exception {
+    void list_openSoonestFirstThenOthersNewestFirst() throws Exception {
         OffsetDateTime now = OffsetDateTime.now(clock);
         Long plannedLater = eventId(createEvent("Hiljem", now.plusDays(20)));
         Long plannedSooner = eventId(createEvent("Varem", now.plusDays(10)));
+        publish(plannedSooner).andExpect(status().isOk());
         Long closedOld = eventId(createEvent("Vana", now.minusDays(40)));
         Long cancelledNewer = eventId(createEvent("Uuem", now.minusDays(5)));
         setStatus(closedOld, EventStatusEnum.CLOSED);
@@ -158,9 +161,9 @@ class AdminEventFlowTest {
         List<Long> ours = ids.stream().map(Integer::longValue)
                 .filter(id -> List.of(plannedLater, plannedSooner, closedOld, cancelledNewer).contains(id)).toList();
         assertThat(ours).containsExactly(plannedSooner, plannedLater, cancelledNewer, closedOld);
-        // Every planned event comes before every closed or cancelled one
+        // Every draft or published event comes before every closed or cancelled one
         List<String> statuses = JsonPath.read(json, "$[*].status");
-        assertThat(statuses.indexOf("PLANNED") < 0 || statuses.lastIndexOf("PLANNED") < firstNotPlanned(statuses)).isTrue();
+        assertThat(lastOpen(statuses)).isLessThan(firstClosedOrCancelled(statuses));
     }
 
     @Test
@@ -199,14 +202,15 @@ class AdminEventFlowTest {
     @Test
     void update_savesFieldsAndSignupAndRaisesVersion() throws Exception {
         Long eventId = eventId(createEvent("Algne", OffsetDateTime.now(clock).plusDays(3)));
+        publish(eventId);
 
-        updateEvent(eventId, "Muudetud", "2030-05-01T18:00:00+03:00", true, 0)
+        updateEvent(eventId, "Muudetud", "2030-05-01T18:00:00+03:00", true, 1)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Muudetud"))
                 .andExpect(jsonPath("$.startsAt").value("2030-05-01T18:00:00+03:00"))
                 .andExpect(jsonPath("$.signupOpen").value(true))
-                .andExpect(jsonPath("$.status").value("PLANNED"))
-                .andExpect(jsonPath("$.version").value(1));
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.version").value(2));
     }
 
     @Test
@@ -309,7 +313,7 @@ class AdminEventFlowTest {
     @Test
     void fees_afterEventEdit_needTheNewVersion() throws Exception {
         Long eventId = eventId(createEvent("Järjest", OffsetDateTime.now(clock).plusDays(3)));
-        updateEvent(eventId, "Järjest", "2030-05-01T18:00:00+03:00", true, 0);
+        updateEvent(eventId, "Järjest", "2030-05-01T18:00:00+03:00", false, 0);
 
         saveFees(eventId, 0, fee(full, 1500)).andExpect(status().isConflict());
         saveFees(eventId, 1, fee(full, 1500)).andExpect(status().isOk());
@@ -323,9 +327,9 @@ class AdminEventFlowTest {
         saveFees(eventId, 0, fee(full, 1_000_001)).andExpect(status().isBadRequest());
         saveFees(eventId, 0, fee(full, 100), fee(full, 200))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.levelIdsUnique").value("a level is listed more than once"));
+                .andExpect(jsonPath("$.fieldErrors['periods[0].levelIdsUnique']").value("a level is listed more than once"));
         perform(put("/api/admin/events/" + eventId + "/fees").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fees\":[]}"))
+                .content("{\"periods\":[]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.version").exists());
     }
@@ -336,7 +340,7 @@ class AdminEventFlowTest {
         saveFees(eventId, 0, fee(full, 1500));
 
         perform(put("/api/admin/events/" + eventId + "/fees").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fees\":[{\"levelId\":" + Long.MAX_VALUE + ",\"amountCents\":100}],\"version\":1}"))
+                .content("{\"periods\":[" + period(null, "{\"levelId\":" + Long.MAX_VALUE + ",\"amountCents\":100}") + "],\"version\":1}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value(101));
 
@@ -361,17 +365,148 @@ class AdminEventFlowTest {
 
         mockMvc.perform(put("/api/admin/events/" + eventId + "/fees").with(csrf()).session(testSessions.memberSession())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"fees\":[],\"version\":0}"))
+                        .content("{\"periods\":[],\"version\":0}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void fees_pricePeriodsAreSavedAndListedByDate() throws Exception {
+        Long eventId = eventId(createEvent("Hinnaperioodid", OffsetDateTime.now(clock).plusDays(30)));
+
+        savePeriods(eventId, 0,
+                period("2030-12-12", fee(full, 0), fee(youth, 0)),
+                period(null, fee(full, 1500), fee(youth, 800)),
+                period("2030-12-01", fee(full, 2500)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feePeriods.length()").value(3))
+                .andExpect(jsonPath("$.feePeriods[0].validFrom").doesNotExist())
+                .andExpect(jsonPath(feeOf(0, full) + ".amountCents").value(1500))
+                .andExpect(jsonPath(feeOf(0, youth) + ".amountCents").value(800))
+                .andExpect(jsonPath("$.feePeriods[1].validFrom").value("2030-12-01"))
+                .andExpect(jsonPath(feeOf(1, full) + ".amountCents").value(2500))
+                .andExpect(jsonPath(feeOf(1, youth) + ".amountCents").value(0))
+                .andExpect(jsonPath("$.feePeriods[2].validFrom").value("2030-12-12"))
+                .andExpect(jsonPath(feeOf(2, full) + ".amountCents").value(0));
+    }
+
+    @Test
+    void fees_withoutPeriodFromTheStart_listItWithZeros() throws Exception {
+        Long eventId = eventId(createEvent("Hiline hind", OffsetDateTime.now(clock).plusDays(30)));
+
+        savePeriods(eventId, 0, period("2030-12-01", fee(full, 2500)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.feePeriods.length()").value(2))
+                .andExpect(jsonPath(feeOf(0, full) + ".amountCents").value(0))
+                .andExpect(jsonPath(feeOf(1, full) + ".amountCents").value(2500));
+    }
+
+    @Test
+    void fees_twoPeriodsStartingTheSameDay_return400() throws Exception {
+        Long eventId = eventId(createEvent("Kaks korda", OffsetDateTime.now(clock).plusDays(30)));
+
+        savePeriods(eventId, 0, period("2030-12-01", fee(full, 100)), period("2030-12-01", fee(full, 200)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.periodStartsUnique").value("two periods start on the same day"));
+        savePeriods(eventId, 0, period(null, fee(full, 100)), period(null, fee(full, 200)))
+                .andExpect(status().isBadRequest());
+        savePeriods(eventId, 0, period("1.12.2030", fee(full, 100)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value(104));
+    }
+
+    // ---- publishing ----
+
+    @Test
+    void publish_draftBecomesPublishedAndRaisesVersion() throws Exception {
+        Long eventId = eventId(createEvent("Avaldamiseks", OffsetDateTime.now(clock).plusDays(3)));
+
+        publish(eventId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PUBLISHED"))
+                .andExpect(jsonPath("$.signupOpen").value(false))
+                .andExpect(jsonPath("$.version").value(1));
+        publish(eventId)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(149));
+    }
+
+    @Test
+    void publish_closedOrCancelledOrUnknown_isRefused() throws Exception {
+        Long cancelled = eventId(createEvent("Tühistatud avaldus", OffsetDateTime.now(clock).plusDays(3)));
+        setStatus(cancelled, EventStatusEnum.CANCELLED);
+
+        publish(cancelled).andExpect(status().isForbidden()).andExpect(jsonPath("$.errorCode").value(148));
+        publish(Long.MAX_VALUE).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void signup_canOnlyBeOpenedOnPublishedEvent() throws Exception {
+        Long eventId = eventId(createEvent("Registreerimine", OffsetDateTime.now(clock).plusDays(3)));
+
+        updateEvent(eventId, "Registreerimine", "2030-05-01T18:00:00+03:00", true, 0)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(150));
+        assertThat(entityManager.find(Event.class, eventId).getSignupOpen()).isFalse();
+
+        publish(eventId);
+        updateEvent(eventId, "Registreerimine", "2030-05-01T18:00:00+03:00", true, 1)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.signupOpen").value(true));
+    }
+
+    @Test
+    void unpublish_withoutParticipants_returnsToDraftAndClosesSignup() throws Exception {
+        Long eventId = eventId(createEvent("Ekslikult avaldatud", OffsetDateTime.now(clock).plusDays(3)));
+        publish(eventId);
+        updateEvent(eventId, "Ekslikult avaldatud", "2030-05-01T18:00:00+03:00", true, 1);
+        participant(eventId, 1500, EventParticipantStatusEnum.REMOVED);
+
+        unpublish(eventId)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DRAFT"))
+                .andExpect(jsonPath("$.signupOpen").value(false))
+                .andExpect(jsonPath("$.version").value(3));
+    }
+
+    @Test
+    void unpublish_withActiveParticipant_returns403() throws Exception {
+        Long eventId = eventId(createEvent("Osalejaga", OffsetDateTime.now(clock).plusDays(3)));
+        publish(eventId);
+        participant(eventId, 1500, EventParticipantStatusEnum.ACTIVE);
+
+        unpublish(eventId)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(151));
+        assertThat(entityManager.find(Event.class, eventId).getStatus()).isEqualTo(EventStatusEnum.PUBLISHED);
+    }
+
+    @Test
+    void unpublish_draftOrClosed_isRefused() throws Exception {
+        Long draft = eventId(createEvent("Mustand", OffsetDateTime.now(clock).plusDays(3)));
+        Long closed = eventId(createEvent("Suletud avaldus", OffsetDateTime.now(clock).minusDays(3)));
+        setStatus(closed, EventStatusEnum.CLOSED);
+
+        unpublish(draft).andExpect(status().isForbidden()).andExpect(jsonPath("$.errorCode").value(150));
+        unpublish(closed).andExpect(status().isForbidden()).andExpect(jsonPath("$.errorCode").value(148));
+    }
+
+    @Test
+    void publish_byMember_returns403() throws Exception {
+        Long eventId = eventId(createEvent("Liige avaldab", OffsetDateTime.now(clock).plusDays(3)));
+
+        mockMvc.perform(post("/api/admin/events/" + eventId + "/publish").with(csrf()).session(testSessions.memberSession()))
+                .andExpect(status().isForbidden());
+        assertThat(entityManager.find(Event.class, eventId).getStatus()).isEqualTo(EventStatusEnum.DRAFT);
     }
 
     // ---- dashboard ----
 
     @Test
-    void dashboard_showsAtMostThreeUpcomingPlannedEventsSoonestFirst() throws Exception {
+    void dashboard_showsAtMostThreeUpcomingOpenEventsSoonestFirst() throws Exception {
         OffsetDateTime now = OffsetDateTime.now(clock);
         Long third = eventId(createEvent("Kolmas", now.plusMinutes(30)));
         Long first = eventId(createEvent("Esimene", now.plusMinutes(10)));
+        publish(first);
         Long second = eventId(createEvent("Teine", now.plusMinutes(20)));
         eventId(createEvent("Neljas", now.plusMinutes(40)));
         eventId(createEvent("Möödunud", now.minusMinutes(10)));
@@ -385,7 +520,9 @@ class AdminEventFlowTest {
                 .andExpect(jsonPath("$.upcomingEvents[0].eventId").value(first))
                 .andExpect(jsonPath("$.upcomingEvents[0].name").value("Esimene"))
                 .andExpect(jsonPath("$.upcomingEvents[0].participantCount").value(1))
+                .andExpect(jsonPath("$.upcomingEvents[0].status").value("PUBLISHED"))
                 .andExpect(jsonPath("$.upcomingEvents[1].eventId").value(second))
+                .andExpect(jsonPath("$.upcomingEvents[1].status").value("DRAFT"))
                 .andExpect(jsonPath("$.upcomingEvents[2].eventId").value(third))
                 .andExpect(jsonPath("$.upcomingEvents[2].participantCount").value(0));
     }
@@ -438,17 +575,40 @@ class AdminEventFlowTest {
                 .formatted(name, startsAt, signupOpen, version)));
     }
 
+    // One period from the start; no fees = no periods at all
     private ResultActions saveFees(Long eventId, long version, String... fees) throws Exception {
+        return savePeriods(eventId, version, fees.length == 0 ? new String[0] : new String[]{period(null, fees)});
+    }
+
+    private ResultActions savePeriods(Long eventId, long version, String... periods) throws Exception {
         return perform(put("/api/admin/events/" + eventId + "/fees").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"fees\":[" + String.join(",", fees) + "],\"version\":" + version + "}"));
+                .content("{\"periods\":[" + String.join(",", periods) + "],\"version\":" + version + "}"));
+    }
+
+    private static String period(String validFrom, String... fees) {
+        String from = validFrom == null ? "null" : "\"" + validFrom + "\"";
+        return "{\"validFrom\":" + from + ",\"fees\":[" + String.join(",", fees) + "]}";
+    }
+
+    private ResultActions publish(Long eventId) throws Exception {
+        return perform(post("/api/admin/events/" + eventId + "/publish"));
+    }
+
+    private ResultActions unpublish(Long eventId) throws Exception {
+        return perform(post("/api/admin/events/" + eventId + "/unpublish"));
     }
 
     private static String fee(MembershipLevel level, long amountCents) {
         return "{\"levelId\":" + level.getId() + ",\"amountCents\":" + amountCents + "}";
     }
 
+    // In the period from the start
     private static String feeOf(MembershipLevel level) {
-        return "$.fees[?(@.levelId == " + level.getId() + ")]";
+        return feeOf(0, level);
+    }
+
+    private static String feeOf(int period, MembershipLevel level) {
+        return "$.feePeriods[" + period + "].fees[?(@.levelId == " + level.getId() + ")]";
     }
 
     private ResultActions perform(MockHttpServletRequestBuilder request) throws Exception {
@@ -463,9 +623,13 @@ class AdminEventFlowTest {
                 .getContentAsString(), "$.eventId")).longValue();
     }
 
-    private static int firstNotPlanned(List<String> statuses) {
+    private static int lastOpen(List<String> statuses) {
+        return Math.max(statuses.lastIndexOf("DRAFT"), statuses.lastIndexOf("PUBLISHED"));
+    }
+
+    private static int firstClosedOrCancelled(List<String> statuses) {
         for (int i = 0; i < statuses.size(); i++) {
-            if (!statuses.get(i).equals("PLANNED")) {
+            if (statuses.get(i).equals("CLOSED") || statuses.get(i).equals("CANCELLED")) {
                 return i;
             }
         }

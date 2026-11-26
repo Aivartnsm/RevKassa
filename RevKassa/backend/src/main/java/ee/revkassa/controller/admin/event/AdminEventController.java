@@ -37,7 +37,7 @@ public class AdminEventController {
     private final EventService eventService;
 
     @GetMapping
-    @Operation(summary = "All events: planned ones first (soonest first), then closed and cancelled (newest first)",
+    @Operation(summary = "All events: draft and published ones first (soonest first), then closed and cancelled (newest first)",
             description = "participantCount and feeIncomeCents count active participants only. "
                     + "Admin password session only.")
     @ApiResponses(value = {
@@ -56,8 +56,8 @@ public class AdminEventController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create an event",
-            description = "The new event is PLANNED with sign-up closed and every level's fee 0: set the fees, then "
-                    + "open sign-up. startsAt may be in the past. Needs the X-XSRF-TOKEN header.")
+            description = "The new event is a DRAFT (members do not see it) with sign-up closed and every level's fee 0: "
+                    + "set the fees, publish, then open sign-up. startsAt may be in the past. Needs the X-XSRF-TOKEN header.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Created, with the detail view"),
             @ApiResponse(responseCode = "400", description = "Name missing or over 100, location over 100, description "
@@ -76,9 +76,10 @@ public class AdminEventController {
     }
 
     @GetMapping("/{eventId}")
-    @Operation(summary = "One event with its fee per level, participant count and fee income",
-            description = "fees lists every active level and deactivated levels that have a fee, in level order. "
-                    + "editable is false for CLOSED and CANCELLED events. Admin password session only.")
+    @Operation(summary = "One event with its fee table, participant count and fee income",
+            description = "feePeriods: the period from the start (validFrom null) first, then by date; each lists every "
+                    + "active level and deactivated levels that have a fee, in level order. editable is false for CLOSED "
+                    + "and CANCELLED events. Admin password session only.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
@@ -97,9 +98,9 @@ public class AdminEventController {
     }
 
     @PutMapping("/{eventId}")
-    @Operation(summary = "Change a planned event's details and sign-up switch",
-            description = "The status is not changed here. Send the version from the detail view. "
-                    + "Needs the X-XSRF-TOKEN header.")
+    @Operation(summary = "Change a draft or published event's details and sign-up switch",
+            description = "The status is not changed here. Sign-up can only be opened on a published event. Send the "
+                    + "version from the detail view. Needs the X-XSRF-TOKEN header.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Saved, with the detail view"),
             @ApiResponse(responseCode = "400", description = "Name missing or over 100, location over 100, description "
@@ -107,8 +108,8 @@ public class AdminEventController {
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
             @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
-            @ApiResponse(responseCode = "403", description = "Event closed or cancelled (148), not an admin password "
-                    + "session or CSRF token missing (118)",
+            @ApiResponse(responseCode = "403", description = "Event closed or cancelled (148), sign-up opened on an "
+                    + "unpublished event (150), not an admin password session or CSRF token missing (118)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
             @ApiResponse(responseCode = "404", description = "No such event (101)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
@@ -124,13 +125,16 @@ public class AdminEventController {
     }
 
     @PutMapping("/{eventId}/fees")
-    @Operation(summary = "Replace a planned event's fee table",
-            description = "A level that is not listed pays 0. Participants added earlier keep the fee they were charged. "
-                    + "Raises the event's version. Needs the X-XSRF-TOKEN header.")
+    @Operation(summary = "Replace a draft or published event's fee table: price periods with a fee per level",
+            description = "periods: [{validFrom (null = from the start), fees: [{levelId, amountCents}]}]. A participant "
+                    + "pays their level's amount in the period holding the day they joined; a level not listed there "
+                    + "pays 0. Participants who already joined keep their fee. Raises the event's version. "
+                    + "Needs the X-XSRF-TOKEN header.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Saved, with the detail view"),
-            @ApiResponse(responseCode = "400", description = "fees or version missing, more than 100 rows, amount below 0 "
-                    + "or above 10 000 €, a level listed twice (errorCode 103)",
+            @ApiResponse(responseCode = "400", description = "periods or version missing, more than 10 periods or 100 "
+                    + "levels in one, amount below 0 or above 10 000 €, a level listed twice in a period, two periods "
+                    + "starting on the same day (errorCode 103); malformed date (104)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
             @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
                     content = @Content(schema = @Schema(implementation = ApiError.class))),
@@ -148,5 +152,51 @@ public class AdminEventController {
                                @RequestBody @Valid EventFeesUpdateRequestDto feesUpdateRequest,
                                @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
         return eventService.updateFees(eventId, feesUpdateRequest, principal.memberId());
+    }
+
+    @PostMapping("/{eventId}/publish")
+    @Operation(summary = "Publish a draft event: members see it from now on",
+            description = "Sign-up stays closed until it is switched on with PUT. Raises the event's version. "
+                    + "Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Published, with the detail view"),
+            @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Already published (149), closed or cancelled (148), not an "
+                    + "admin password session or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such event (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public EventDto publishEvent(@PathVariable Long eventId,
+                                 @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return eventService.publishEvent(eventId, principal.memberId());
+    }
+
+    @PostMapping("/{eventId}/unpublish")
+    @Operation(summary = "Turn a published event back into a draft, while nobody takes part",
+            description = "For an event published by mistake. Sign-up closes. Raises the event's version. "
+                    + "Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Back to draft, with the detail view"),
+            @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Not published (150), has active participants (151), closed "
+                    + "or cancelled (148), not an admin password session or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such event (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public EventDto unpublishEvent(@PathVariable Long eventId,
+                                   @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return eventService.unpublishEvent(eventId, principal.memberId());
     }
 }

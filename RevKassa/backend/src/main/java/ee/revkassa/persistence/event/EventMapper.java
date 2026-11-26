@@ -52,7 +52,7 @@ public interface EventMapper {
     @Mapping(source = "version", target = "version")
     @Mapping(target = "participantCount", ignore = true)
     @Mapping(target = "feeIncomeCents", ignore = true)
-    @Mapping(target = "fees", ignore = true)
+    @Mapping(target = "feePeriods", ignore = true)
     EventDto toEventDto(Event event);
 
     @Mapping(source = "id", target = "eventId")
@@ -69,6 +69,7 @@ public interface EventMapper {
     @Mapping(source = "name", target = "name")
     @Mapping(source = "startsAt", target = "startsAt")
     @Mapping(source = "location", target = "location")
+    @Mapping(source = "status", target = "status")
     @Mapping(target = "participantCount", ignore = true)
     UpcomingEventDto toUpcomingEventDto(Event event);
 }

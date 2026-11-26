@@ -27,6 +27,6 @@ public class EventDto implements Serializable {
     private long participantCount;
     // Fees charged to the active participants
     private long feeIncomeCents;
-    // Levels in display order: every active level, and deactivated levels that have a fee
-    private List<EventFeeDto> fees;
+    // Price periods, the one without a date (from the start) first, then by date. Always at least that one
+    private List<EventFeePeriodDto> feePeriods;
 }

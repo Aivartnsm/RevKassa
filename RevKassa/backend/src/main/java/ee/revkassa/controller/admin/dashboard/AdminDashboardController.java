@@ -26,7 +26,8 @@ public class AdminDashboardController {
             description = "Debts are positive owed amounts and include inactive members (active = false). Stock "
                     + "figures count products for sale only: LOW = 0 up to the warning level, NEGATIVE = below 0. "
                     + "largestDebts and topProducts hold at most 5 rows; undone purchases are not counted. "
-                    + "upcomingEvents: at most 3 PLANNED events from now on, soonest first, with active participants. "
+                    + "upcomingEvents: at most 3 draft or published events from now on, soonest first, with status and active "
+                    + "participants. "
                     + "Admin password session only.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),

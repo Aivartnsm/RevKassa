@@ -444,25 +444,46 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Tehtud (kokku lepitud enne ehitamist):
   - `EventParticipant` entiteet on olemas ainult lugemiseks (osalejate arv ja `feeIncomeCents` = aktiivsete
     osalejate `fee_cents` summa); lisamine/eemaldamine B29-s. Eelarve kokkuvõtted tulevad detaili B30-s.
-  - `GET` nimekiri ilma lehtedeta: `PLANNED` ees (varaseim enne), siis teised (uuemad ees);
+  - `GET` nimekiri ilma lehtedeta: `DRAFT`/`PUBLISHED` ees (varaseim enne), siis teised (uuemad ees);
     `EventSummaryDto` {eventId, name, startsAt, location, status, signupOpen, participantCount, feeIncomeCents}.
-  - `POST {name ≤100, startsAt, location ≤100, description ≤2000}` → 201 detailiga; `PLANNED`, registreerimine
+  - `POST {name ≤100, startsAt, location ≤100, description ≤2000}` → 201 detailiga; `DRAFT`, registreerimine
     suletud, kõik tasud 0; minevikus algusaeg on lubatud. Kustutamise endpointi pole (tühista).
   - `PUT {id} {name, startsAt, location, description, signupOpen, version}`; staatust siin ei muudeta.
-  - `PUT {id}/fees {fees:[{levelId, amountCents 0..1 000 000}], version}` **asendab kogu tabeli** (puuduv tase = 0,
-    salvestatakse ainult > 0 read), kordus → 400 `levelIdsUnique`, tundmatu tase → 404; tõstab ürituse `version`-it
-    (ürituse rida uuendatakse enne tasusid, nii et paralleelne salvestus saab 409).
-  - Detail `EventDto`: lisaks `editable`, `createdByName`, `version`, `fees` [{levelId, levelName, levelActive,
-    amountCents}] — kõik aktiivsed tasemed ja mitteaktiivsed ainult tasuga.
-  - `CLOSED`/`CANCELLED` → `PUT` ja `PUT fees` 403 `148 EVENT_NOT_EDITABLE`. Automaatset sulgemist pole.
-  - Ülevaade: `upcomingEvents` — kuni 3 `PLANNED` üritust alates praegusest, varaseim ees, osalejate arvuga.
+  - `PUT {id}/fees {periods:[{validFrom (null = algusest), fees:[{levelId, amountCents 0..1 000 000}]}], version}`
+    **asendab kogu tabeli** (hinnaperioodid, puuduv tase = 0; ka 0 € read salvestatakse, et periood säiliks);
+    perioodis kordus → 400 `periods[n].levelIdsUnique`, kaks perioodi samal päeval → 400 `periodStartsUnique`,
+    tundmatu tase → 404; tõstab ürituse `version`-it (ürituse rida uuendatakse enne tasusid → paralleelne 409).
+  - Detail `EventDto`: lisaks `editable`, `createdByName`, `version`, `feePeriods` [{validFrom, fees: [{levelId,
+    levelName, levelActive, amountCents}]}] — "algusest" periood alati esimesena; tasemed: kõik aktiivsed ja
+    mitteaktiivsed ainult > 0 tasuga.
+  - Staatused (muudetud pärast B28 ülevaatust, skeemimuudatus `2026-11-26_uritused-avaldamine-ja-hinnaperioodid`):
+    `DRAFT` → `POST {id}/publish` → `PUBLISHED`; `POST {id}/unpublish` tagasi mustandiks ainult ilma aktiivsete
+    osalejateta (403 `151`), suleb registreerimise; topeltavaldamine 403 `149`, mitteavaldatud 403 `150`.
+    `signupOpen = true` ainult `PUBLISHED` üritusel (403 `150`, andmebaasis `CHECK`).
+  - `CLOSED`/`CANCELLED` → `PUT`, `PUT fees`, publish/unpublish 403 `148 EVENT_NOT_EDITABLE`. Automaatset sulgemist pole.
+  - Ülevaade: `upcomingEvents` — kuni 3 `DRAFT`/`PUBLISHED` üritust alates praegusest, varaseim ees, staatuse ja
+    osalejate arvuga.
 
-- [ ] **B29 · Osalejad ja ürituse tasud** (M) — pärast B10, B28
-  `POST /api/admin/events/{id}/participants {memberIds}`: liikme kohta kopeeri tase + tasu,
-  kirjuta `EVENT_FEE` rida `AccountService.post` kaudu (0 korral mitte); juba aktiivne → vahele
-  jäetud. `DELETE …/participants/{memberId}` → `REMOVED` + `EVENT_FEE_REVERSAL`. `POST …/cancel`
-  tagastab kõik; `POST …/close` lukustab. Ajaloo kirjeldus "Ürituse tasu · <üritus>".
-  Valmis, kui: lisamine/eemaldamine/uuesti lisamine, tasu 0, tühistamine, osaleja invariant ja
+- [ ] **B29 · Osalejad ja ürituse tasud** (L) — pärast B10, B28
+  `POST /api/admin/events/{id}/participants {memberIds}` (1–200, kordused üks kord; `DRAFT`/`PUBLISHED`):
+  liikme kohta kopeeri tase ja tasu **liitumise päeva hinnaperioodist** (Tallinna kuupäev), saldo ei muutu;
+  üks transaktsioon, ürituse rida lukustatakse esimesena. Tundmatu liige → 404 (midagi ei lisata); mitteaktiivne
+  (`MEMBER_NOT_ACTIVE`) ja juba aktiivne (`ALREADY_PARTICIPANT`) → vahele jäetud; `REMOVED` rida taas `ACTIVE`-iks
+  uue liitumisaja, taseme ja tasuga, `charged_at = null`. Vastus: ürituse detail + `skipped [{memberId, reason}]`.
+  `POST …/charge` ("Võta tasud", ainult `PUBLISHED`): kõigile aktiivsetele `charged_at = null` osalejatele
+  `EVENT_FEE` (kui > 0) ja `charged_at`; korduv vajutus võtab ainult hiljem lisatutelt.
+  `PUT …/participants/{memberId}/fee {feeCents, note}`: enne võtmist muutub ainult `fee_cents`; pärast võtmist
+  kirjutatakse vahe (`EVENT_FEE` või `EVENT_FEE_REVERSAL`, märkusega).
+  `DELETE …/participants/{memberId}` → `REMOVED` (+ `EVENT_FEE_REVERSAL`, kui tasu oli võetud); juba eemaldatud →
+  403 `PARTICIPANT_NOT_ACTIVE`, pole osaleja → 404.
+  `POST …/close` (ainult `PUBLISHED`): võtab järelejäänud tasud, `CLOSED`, registreerimine kinni.
+  `POST …/cancel` (`DRAFT`/`PUBLISHED`): kõik aktiivsed `REMOVED`, võetud tasud tagasi, `CANCELLED`.
+  Detaili lisandub `participants` [{memberId, displayName, levelName, feeCents, status, charged, selfSignup,
+  addedByName, addedAt, removedAt}] (aktiivsed nime järgi, siis eemaldatud) ning `unchargedCount`/`unchargedCents`.
+  `account_entry.event_participant_id` seos entiteediks; ajaloos "Ürituse tasu · <üritus>" ja
+  "Ürituse tasu tagastus · <üritus>" (+ märkus).
+  Valmis, kui: lisamine hinnaperioodi järgi, vahelejätmised, eemaldamine enne/pärast võtmist, uuesti lisamine,
+  tasu võtmine (ka korduv), tasu muutmine enne/pärast võtmist, tasu 0, sulgemine, tühistamine, osaleja invariant ja
   saldo invariant on testitud.
 
 - [ ] **B30 · Ürituse eelarve** (S) — pärast B28
@@ -471,11 +492,12 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: puuduvate tegelike summadega kokkuvõtted ja ainult loetavad olekud on testitud.
 
 - [ ] **B33 · Liikme registreerumine** (S) — pärast B29
-  `event.signup_open` (admin muudab). `GET /api/events`: `PLANNED` üritused avatud
-  registreerimisega ja üritused, kus liige osaleb; igaühel oma tasu (taseme järgi), osalejate
-  arv, `signedUp`. `POST /api/events/{id}/signup`: ainult `PLANNED` + avatud (muidu
-  `ForbiddenException`), mitte juba aktiivne (`ForbiddenException`); sama service nagu admini
-  lisamisel, `added_by` = liige. Liikmel tühistamise endpointi pole.
+  `event.signup_open` (admin muudab). `GET /api/events`: eelseisvad `PUBLISHED` üritused ja üritused, kus liige
+  osaleb; igaühel `signupOpen`, oma tasu (taseme ja tänase hinnaperioodi järgi; registreerunul tema kopeeritud
+  tasu), järgmine hinnatõus (kuupäev + summa, kui on), osalejate arv, `signedUp`, kas tasu on võetud.
+  `POST /api/events/{id}/signup`: ainult `PUBLISHED` + avatud (muidu `ForbiddenException`), mitte juba aktiivne
+  (`ForbiddenException`); sama service nagu admini lisamisel, `added_by` = liige; saldo ei muutu enne tasude
+  võtmist. Liikmel tühistamise endpointi pole.
   Valmis, kui: avatud/suletud/tühistatud, topeltregistreerumine, tasu taseme järgi ja see, et
   liige ei saa end eemaldada (route'i pole; admini DELETE töötab), on testitud.
 

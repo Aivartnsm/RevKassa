@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface EventLevelFeeRepository extends JpaRepository<EventLevelFee, EventLevelFeeId> {
+public interface EventLevelFeeRepository extends JpaRepository<EventLevelFee, Long> {
 
-    @Query("select f from EventLevelFee f where f.event.id = :eventId")
+    @Query("select f from EventLevelFee f where f.event.id = :eventId order by f.validFrom nulls first, f.level.id")
     List<EventLevelFee> findEventFees(Long eventId);
 
     @Modifying(flushAutomatically = true)

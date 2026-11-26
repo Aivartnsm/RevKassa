@@ -10,7 +10,8 @@ import org.hibernate.annotations.ColumnDefault;
 import java.time.OffsetDateTime;
 
 /**
- * A club event with a fee per membership level (EventLevelFee). Only a PLANNED event can be changed.
+ * A club event with fees per membership level and price period (EventLevelFee). A DRAFT is hidden from members;
+ * only DRAFT and PUBLISHED events can be changed.
  */
 @Getter
 @Setter
@@ -41,7 +42,7 @@ public class Event {
     @Column(name = "status", nullable = false, length = Integer.MAX_VALUE)
     private EventStatusEnum status;
 
-    // Members can sign up themselves while the event is PLANNED and this is on
+    // Members can sign up themselves; only on a PUBLISHED event (database CHECK)
     @NotNull
     @ColumnDefault("false")
     @Column(name = "signup_open", nullable = false)
@@ -69,6 +70,6 @@ public class Event {
     private Long version;
 
     public boolean isEditable() {
-        return status == EventStatusEnum.PLANNED;
+        return status == EventStatusEnum.DRAFT || status == EventStatusEnum.PUBLISHED;
     }
 }

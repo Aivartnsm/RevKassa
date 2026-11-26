@@ -179,23 +179,27 @@ Liikmetasemed
 - Tasemed määravad nii igakuise liikmemaksu kui ürituste osalustasud.
 
 Üritused
-- Üritusel on nimi, algusaeg, koht, kirjeldus ja staatus `PLANNED` → `CLOSED` (pärast
-  toimumist; muudatusi enam ei saa) või `CANCELLED`.
-- Osalustasu: üks summa taseme kohta (0 € lubatud). Osaleja lisamisel kopeeritakse tema
-  praegune tase ja selle taseme tasu osaleja reale ning tasu läheb saldole (`EVENT_FEE` rida).
-  Hilisemad tasumuudatused kehtivad ainult pärast seda lisatud osalejatele; vaade hoiatab selle eest.
-- Osaleja eemaldamine enne ürituse sulgemist kirjutab `EVENT_FEE_REVERSAL` rea. Ürituse
-  tühistamine tagastab kõigi järelejäänud osalejate tasud. Midagi ei kustutata.
-- Registreerimine: üritusel on **registreerimine avatud** lüliti. Kuni üritus on `PLANNED` ja
-  registreerimine avatud, näevad liikmed seda rakenduses "Üritused" all koos oma tasuga ja
-  saavad ühe kinnitusega registreeruda ("Tasu 15,00 € lisatakse sinu saldole").
-  Registreerumine töötab nagu lisamine: tase ja tasu kopeeritakse, `EVENT_FEE` rida. Saldo
-  limiiti pole, nagu mujalgi.
+- Üritusel on nimi, algusaeg, koht, kirjeldus ja staatus: `DRAFT` (mustand, liikmed ei näe) → `PUBLISHED`
+  (liikmed näevad) → `CLOSED` (pärast toimumist; muudatusi enam ei saa) või `CANCELLED`. Avaldatud ürituse saab
+  mustandiks tagasi võtta ainult siis, kui keegi ei osale.
+- Osalustasu: summa taseme ja **hinnaperioodi** kohta (0 € lubatud), nt algusest 15 €, alates 01.12 25 €,
+  peopäeval 40 €. Osaleja tasu on tema taseme summa perioodis, kuhu jääb tema liitumise päev; see kopeeritakse
+  liitumisel osaleja reale koos tasemega ja **jääb samaks**, ka kui tasutabelit hiljem muudetakse.
+- **Tasud võtab admin:** liitumine ei muuda saldot. Admin vajutab "Võta tasud" (kõigilt veel võtmata aktiivsetelt
+  osalejatelt, `EVENT_FEE` rida; võib vajutada uuesti hiljem lisatute jaoks). "Sulge" võtab järelejäänud tasud ja
+  lukustab ürituse. Admin saab osaleja tasu muuta: enne võtmist muutub ainult summa, pärast võtmist kirjutatakse
+  vahe saldole (koos märkusega).
+- Osaleja eemaldamine ja ürituse tühistamine tagastavad tasu (`EVENT_FEE_REVERSAL`) ainult neile, kellelt see oli
+  juba võetud. Midagi ei kustutata.
+- Registreerimine: avaldatud üritusel on **registreerimine avatud** lüliti. Kuni üritus on `PUBLISHED` ja
+  registreerimine avatud, saavad liikmed rakenduses "Üritused" all ühe kinnitusega registreeruda ("Tasu 15,00 €
+  lisatakse sinu saldole, kui admin tasud võtab"). Avaldatud üritust näevad kõik liikmed ka siis, kui
+  registreerimine on suletud. Registreerumine töötab nagu lisamine: tase ja tasu kopeeritakse. Saldo limiiti pole.
 - Liikmed **ei saa** registreerumist tühistada: rakendus ütleb, et tuleb adminiga ühendust
-  võtta. Osalejaid eemaldab ainult admin (tasu tagastatakse). Admin saab liikmeid lisada ka
-  pärast registreerimise sulgemist.
-- Osalejate nimekiri näitab, kes registreerus ise ja kelle lisas admin. Liikmed näevad
-  ajaloos "Ürituse tasu · <üritus>". Liikme külalised kaetakse eelarvest, mitte osalejatena.
+  võtta. Osalejaid eemaldab ainult admin. Admin saab liikmeid lisada ka mustandile ja pärast registreerimise
+  sulgemist.
+- Osalejate nimekiri näitab, kes registreerus ise ja kelle lisas admin, ning kellelt tasu on võetud. Liikmed
+  näevad ajaloos "Ürituse tasu · <üritus>". Liikme külalised kaetakse eelarvest, mitte osalejatena.
 
 Ürituse eelarve
 - Eelarveread: kategooria, kirjeldus, planeeritud summa, tegelik summa (täidetakse pärast
@@ -274,8 +278,8 @@ AI abiline (valikuline)
 | `GET /api/payments/details` | liige | `{recipient, iban, description}` pangaülekande jaoks |
 | `POST /api/payments` | liige | `{amountCents, reference?}` — teata maksest |
 | `GET /api/me/payments?status=PENDING` | liige | oma maksed staatuse järgi (`PENDING` / `CONFIRMED` / `REJECTED`) |
-| `GET /api/events` | liige | eelseisvad registreerimiseks avatud üritused, oma tasu ja kas registreerunud |
-| `POST /api/events/{id}/signup` | liige | registreeru; võtab oma taseme tasu (tühistamise endpointi pole) |
+| `GET /api/events` | liige | avaldatud eelseisvad üritused ja üritused, kus liige osaleb; oma tasu, registreerimise olek ja kas registreerunud |
+| `POST /api/events/{id}/signup` | liige | registreeru; tasu tema taseme ja tänase hinnaperioodi järgi, saldole läheb see tasude võtmisel (tühistamise endpointi pole) |
 | `GET/POST/PUT /api/admin/products` | admin | toodete ja hindade haldus |
 | `POST /api/admin/stock/deliveries` | admin | tarne sisestamine (toode, kogus, ühiku hind) |
 | `POST /api/admin/stock/stocktake` | admin | loetud kogused → parandused |
@@ -305,10 +309,13 @@ AI abiline (valikuline)
 | `DELETE /api/admin/levels/{id}` | admin | kustuta kasutamata tase (kasutusel olev → ainult kasutusest maha) |
 | `GET/POST /api/admin/events` | admin | ürituste nimekiri / loomine |
 | `GET/PUT /api/admin/events/{id}` | admin | ürituse detail tasude, osalejate ja eelarve kokkuvõttega / muutmine (k.a `signupOpen`) |
-| `POST /api/admin/events/{id}/close`, `/cancel` | admin | sulge, või tühista ja tagasta tasud |
-| `PUT /api/admin/events/{id}/fees` | admin | `{fees:[{levelId, amountCents}], version}` — asendab kogu tasutabeli (puuduv tase = 0) |
-| `POST /api/admin/events/{id}/participants` | admin | `{memberIds:[...]}` → võtab tasud |
-| `DELETE /api/admin/events/{id}/participants/{memberId}` | admin | eemalda, tagastab tasu |
+| `POST /api/admin/events/{id}/publish`, `/unpublish` | admin | avalda liikmetele / tagasi mustandiks (kui keegi ei osale) |
+| `POST /api/admin/events/{id}/charge` | admin | "Võta tasud": kõigilt veel võtmata aktiivsetelt osalejatelt |
+| `POST /api/admin/events/{id}/close`, `/cancel` | admin | sulge (võtab järelejäänud tasud), või tühista ja tagasta võetud tasud |
+| `PUT /api/admin/events/{id}/fees` | admin | `{periods:[{validFrom, fees:[{levelId, amountCents}]}], version}` — asendab kogu tasutabeli (hinnaperioodid; puuduv tase = 0) |
+| `POST /api/admin/events/{id}/participants` | admin | `{memberIds:[...]}` → lisab osalejad tasuga (saldot veel ei muuda) |
+| `PUT /api/admin/events/{id}/participants/{memberId}/fee` | admin | `{feeCents, note}` — muuda osaleja tasu (pärast võtmist kirjutab vahe) |
+| `DELETE /api/admin/events/{id}/participants/{memberId}` | admin | eemalda, tagastab tasu, kui see oli võetud |
 | `GET/POST/PUT/DELETE /api/admin/events/{id}/budget-lines` | admin | eelarveread |
 | `GET /api/admin/assistant/status` | admin | `{enabled}` |
 | `POST /api/admin/events/{id}/assistant` | admin | `{kind: BUDGET\|QUANTITIES\|RECIPE\|QUESTION, question}` → `{answer, suggestedLines}` |

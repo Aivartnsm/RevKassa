@@ -272,8 +272,8 @@ Arve on maksenõude kirje; see ei muuda kunagi saldot.
 | starts_at | timestamptz not null | |
 | location | text | |
 | description | text | |
-| status | text not null | `PLANNED` \| `CLOSED` \| `CANCELLED` |
-| signup_open | boolean not null default false | liikmed saavad registreeruda, kui `PLANNED` ja avatud |
+| status | text not null | `DRAFT` (liikmed ei näe) \| `PUBLISHED` (liikmed näevad) \| `CLOSED` \| `CANCELLED`; muuta saab ainult `DRAFT`/`PUBLISHED` |
+| signup_open | boolean not null default false | liikmed saavad registreeruda; `CHECK`: tõene ainult `PUBLISHED` üritusel |
 | created_by | bigint not null FK member | admin |
 | created_at, updated_at | timestamptz not null | |
 | version | bigint not null default 0 | optimistlik lukk |
@@ -281,11 +281,16 @@ Arve on maksenõude kirje; see ei muuda kunagi saldot.
 ### event_level_fee
 | veerg | tüüp | märkused |
 |---|---|---|
-| event_id | bigint not null FK event | PK osa 1, `ON DELETE CASCADE` |
-| level_id | bigint not null FK membership_level | PK osa 2 |
+| id | bigint PK | |
+| event_id | bigint not null FK event | `ON DELETE CASCADE` |
+| level_id | bigint not null FK membership_level | |
+| valid_from | date | hinnaperioodi algus (Tallinna kuupäev); null = algusest |
 | amount_cents | bigint not null | ≥ 0 |
 
-Kui tasemel rida pole, on tema tasu sellel üritusel 0.
+Unikaalne `(event_id, level_id, valid_from)` (`NULLS NOT DISTINCT`). Hinnaperioodid: nt algusest 15 €, alates
+01.12 25 €, peopäeval 40 €. Osaleja tasu on tema taseme summa perioodis, kuhu jääb tema liitumise päev
+(`added_at` Tallinna kuupäev); kui tasemel sellel perioodil rida pole, on tasu 0. Salvestatakse ka 0 € read,
+et ainult 0 € summadega periood (nt "peopäeval tasuta") säiliks.
 
 ### event_participant
 | veerg | tüüp | märkused |
@@ -299,9 +304,14 @@ Kui tasemel rida pole, on tema tasu sellel üritusel 0.
 | added_by | bigint not null FK member | admin või liige ise (= iseregistreerimine) |
 | added_at | timestamptz not null | |
 | removed_at | timestamptz | |
+| charged_at | timestamptz | millal tasu saldole võeti ("Võta tasud" / sulgemine); null = veel võtmata |
 
+Liitumisel kopeeritakse tase ja tasu (liitumise päeva hinnaperioodist); saldo ei muutu. Tasu läheb saldole
+(`EVENT_FEE`, kui > 0) alles siis, kui admin tasud võtab; siis täidetakse `charged_at`. Admin saab osaleja tasu
+muuta: enne võtmist muutub ainult `fee_cents`, pärast võtmist kirjutatakse vahe (`EVENT_FEE` või
+`EVENT_FEE_REVERSAL`). Eemaldamine/tühistamine kirjutab `EVENT_FEE_REVERSAL`-i ainult siis, kui tasu oli võetud.
 Unikaalne `(event_id, member_id)`: eemaldatud liikme uuesti lisamine teeb rea taas `ACTIVE`-iks
-praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
+praeguse taseme, uue liitumisaja ja selle tasuga ning `charged_at = null`.
 
 ### event_budget_line
 | veerg | tüüp | märkused |
@@ -333,6 +343,7 @@ praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
 - `invoice (number)` unikaalne; `invoice (member_id, created_at desc)`
 - `membership_level (lower(name))` unikaalne
 - `event (starts_at desc)`
+- `event_level_fee (event_id, level_id, valid_from)` unikaalne (`NULLS NOT DISTINCT`)
 - `event_participant (event_id, member_id)` unikaalne; `event_participant (member_id)`
 - `event_budget_line (event_id, category)`
 
@@ -347,8 +358,9 @@ praeguse taseme ja tasuga ning kirjutab uue `EVENT_FEE` rea.
 - Maksel on `account_entry` rida siis ja ainult siis, kui staatus on `CONFIRMED`.
 - `CHARGED` liikmemaksul on üks `MEMBERSHIP_FEE` rida summaga `-amount_cents`; `WAIVED`
   tasul on lisaks üks `MEMBERSHIP_FEE_WAIVER` rida summaga `+amount_cents`.
-- `event_participant` kohta on tema ridade summa `-fee_cents`, kui `ACTIVE`, ja 0, kui
-  `REMOVED` (tasu 0 korral ridu üldse pole). `CANCELLED` üritusel pole `ACTIVE` osalejaid.
+- `event_participant` kohta on tema ridade summa `-fee_cents`, kui `ACTIVE` ja `charged_at` on täidetud, ning 0,
+  kui `ACTIVE` ja võtmata või `REMOVED` (tasu 0 korral ridu üldse pole). `CANCELLED` üritusel pole `ACTIVE`
+  osalejaid; `CLOSED` üritusel on kõigil `ACTIVE` osalejatel `charged_at`.
 
 ## Mida üks ost kirjutab (üks transaktsioon)
 Liige ostab 2 × Saku (2,50 €) + 1 × A. Le Coq (3,00 €):

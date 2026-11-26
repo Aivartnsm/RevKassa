@@ -8,31 +8,34 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 /**
- * The whole fee table of an event: a level that is not listed pays 0. Participants added earlier keep their fee.
+ * The whole fee table of an event: price periods, each with a fee per level. Before the first dated period the
+ * period without a date applies; with none, joining before the first date is free. Participants who already joined
+ * keep the fee they got.
  */
 @Data
 public class EventFeesUpdateRequestDto implements Serializable {
 
-    public static final int MAX_LEVELS = 100;
+    public static final int MAX_PERIODS = 10;
 
     // May be empty: the event is free for everyone
     @NotNull
-    @Size(max = MAX_LEVELS)
-    private List<@NotNull @Valid EventFeeRequestDto> fees;
+    @Size(max = MAX_PERIODS)
+    private List<@NotNull @Valid EventFeePeriodRequestDto> periods;
 
     // The event version the admin loaded; an older one means someone else saved in between (409)
     @NotNull
     private Long version;
 
-    // Reported as field "levelIdsUnique" in ApiError.fieldErrors
-    @AssertTrue(message = "a level is listed more than once")
+    // Reported as field "periodStartsUnique" in ApiError.fieldErrors; at most one period without a date
+    @AssertTrue(message = "two periods start on the same day")
     @SuppressWarnings("unused") // called by Bean Validation
-    private boolean isLevelIdsUnique() {
-        if (fees == null || fees.stream().anyMatch(fee -> fee == null || fee.getLevelId() == null)) {
+    private boolean isPeriodStartsUnique() {
+        if (periods == null || periods.stream().anyMatch(Objects::isNull)) {
             return true;
         }
-        return fees.stream().map(EventFeeRequestDto::getLevelId).distinct().count() == fees.size();
+        return periods.stream().map(EventFeePeriodRequestDto::getValidFrom).distinct().count() == periods.size();
     }
 }

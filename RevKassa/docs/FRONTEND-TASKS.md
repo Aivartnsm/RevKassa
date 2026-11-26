@@ -240,15 +240,17 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   137 → "Vähemalt üks tase peab jääma aktiivseks"; 138 → "See tase on kasutusest maha võetud".
 
 - [ ] **F23 · Ürituste nimekiri ja redaktor** (M) — vajab B28
-  Menüüpunkt "Üritused": kaardid (nimi, kuupäev, staatus, osalejad, tasudest laekuv, eelarve
-  tulemus), vorm "Uus üritus" (nimi, kuupäev ja kellaaeg, koht, kirjeldus). Detaili päises
-  Sulge/Tühista (kinnitusdialoog; tühistamine selgitab, et tasud tagastatakse).
+  Menüüpunkt "Üritused": kaardid (nimi, kuupäev, staatus Mustand/Avaldatud/Suletud/Tühistatud, osalejad,
+  tasudest laekuv, eelarve tulemus), vorm "Uus üritus" (nimi, kuupäev ja kellaaeg, koht, kirjeldus; luuakse
+  mustandina). Detaili päises Avalda / Võta tagasi mustandiks / Sulge / Tühista (kinnitusdialoog; sulgemine ütleb, et
+  järelejäänud tasud võetakse, tühistamine, et võetud tasud tagastatakse).
 
 - [ ] **F24 · Tasud ja osalejad** (M) — vajab B29
-  Tasude tabel taseme kaupa (€ väljad, salvesta; hoiatus, et varasemad osalejad jäävad oma tasuga).
-  Lüliti "Registreerimine avatud". Osalejate nimekiri (nimi, tase, tasu, "ise" / "lisas admin",
-  Eemalda) ja "Lisa osalejaid": otsitav liikmete nimekiri linnukestega, mis näitab iga liikme
-  tasu enne lisamist. Kokkuvõtted: arv, tasudest laekuv.
+  Tasude tabel: read tasemed, veerud hinnaperioodid ("Algusest", "Alates 01.12", lisa/eemalda periood; € väljad,
+  salvesta; hoiatus, et juba liitunud jäävad oma tasuga). Lüliti "Registreerimine avatud" (ainult avaldatud
+  üritusel). Osalejate nimekiri (nimi, tase, tasu, "ise" / "lisas admin", võetud / võtmata, Muuda tasu,
+  Eemalda) ja "Lisa osalejaid": otsitav liikmete nimekiri linnukestega, mis näitab iga liikme tasu enne
+  lisamist. Nupp "Võta tasud (N osalejat, X €)". Kokkuvõtted: arv, tasudest laekuv, võtmata.
 
 - [ ] **F25 · Ürituse eelarve** (M) — vajab B30
   Read kategooriate kaupa (Joogid, Snäkid, Toit, Meelelahutus, Ruum, Kaunistus, Muu)
@@ -257,9 +259,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F27 · Liige: üritused** (M) — vajab B33
   Liikme tab "Üritused" (telefoni tabiriba Osta · Üritused · Konto · Logi välja; tahvlil päises):
-  eelseisvad üritused kuupäeva, koha, kirjelduse ja oma tasuga; "Registreeru" → kinnitusleht
-  "Tasu X lisatakse sinu saldole" → "Oled kirjas". Registreeritud üritustel "Oled kirjas" ja
-  "Loobumiseks võta ühendust adminiga" (tühistamise nuppu pole).
+  avaldatud eelseisvad üritused kuupäeva, koha, kirjelduse ja oma tasuga (ning "alates 01.12 25 €", kui hind
+  tõuseb); "Registreeru" (kui registreerimine on avatud) → kinnitusleht "Tasu X lisatakse sinu saldole, kui
+  admin tasud võtab" → "Oled kirjas". Registreeritud üritustel "Oled kirjas" ja "Loobumiseks võta ühendust
+  adminiga" (tühistamise nuppu pole).
 
 - [ ] **F28 · Üritused telefonis (admin)** (S) — koos F23–F25
   Admini ürituste vaated töötavad 390px juures: nimekiri → detail segmentidega Osalejad ·
