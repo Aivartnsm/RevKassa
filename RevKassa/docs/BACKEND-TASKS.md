@@ -386,7 +386,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 (B25 · E-kirjade saatmine on verstapostis 1, sest parooli lingid vajavad seda.)
 
-- [ ] **B26 · Arved** (M) — pärast B14, B17, B25, B39
+- [x] **B26 · Arved** (M) — pärast B14, B17, B25, B39
   `Invoice` entiteet. `GET /api/admin/invoices/candidates`: liikmed saldoga < 0, e-post,
   viimase arve kuupäev. `GET /api/admin/invoices/preview?memberId=`.
   `POST /api/admin/invoices` `{memberIds}`: liikme kohta oma transaktsioon: järgmine number
@@ -398,6 +398,25 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `FAILED`, sama number). Saldod ei muutu kunagi.
   Valmis, kui: võlts-`Mailer`-iga testid katavad numeratsiooni üle aastavahetuse, ebaõnnestunud
   aadressi, mis teisi ei peata, vahelejätmise põhjused, uuesti saatmise ja kirja sisu.
+  Tehtud (kokku lepitud enne ehitamist):
+  - Read algavad viimasest **SENT** arvest, kuid mitte varem kui 60 päeva tagasi (`FAILED` arve algust ei nihuta).
+    Kirjas on **Algsaldo** (saldo perioodi alguses) + read + **Lõppsaldo** (= võlg), nii et read summeeruvad;
+    ridade tekst on sama mis liikme saldo ajaloos (`AccountEntryService`).
+  - Number: `YYYY-NNNN` Tallinna aja aasta järgi, `organisation` rea lukuga (kaks adminit ei saa sama numbrit);
+    üks transaktsioon liikme kohta (number → saatmine → staatus), ebaõnnestunud kiri hoiab oma numbri.
+  - `candidates`: kõik negatiivse saldoga liikmed, **ka mitteaktiivsed** (`active`), suurim võlg ees;
+    `lastInvoiceAt`/`lastInvoiceStatus` (uusim arve) ja `defaultSelected` (pole viimase 7 päeva jooksul SENT arvet;
+    ainult vaikevalik, saatmisel ei jõustata).
+  - `POST` `{memberIds}` 1–200, kordused üks kord; tulemus liikme kaupa `SENT` / `FAILED` (arve + `error`) /
+    `SKIPPED` + `skipReason` `NOT_IN_DEBT` | `MEMBER_NOT_FOUND` | `ERROR` (ootamatu viga, midagi ei salvestatud).
+  - Saaja nimi või IBAN seadmata → 404 `131` enne ühegi kirja saatmist (nagu B15).
+  - `preview` → `{number, amountCents, dueDate, to, subject, body}`; number on järgmine vaba, mitte reserveeritud;
+    võlata liige → 403 `146 MEMBER_NOT_IN_DEBT`.
+  - `resend`: ainult `FAILED` (muidu 403 `147 INVOICE_ALREADY_SENT`); sama number, summa, tähtaeg ja read, aga
+    liikme **praegusele** e-postile (`email_to` uueneb); kui liige on vahepeal tasunud → 403 `146`. Vastus on arve
+    (200) ka siis, kui saatmine uuesti ebaõnnestub.
+  - `GET /api/admin/invoices?memberId=&page=`: `memberId` valikuline, 20 lehel, uuemad ees.
+  - Kirja pealkiri "Arve 2026-0004 · <ühingu nimi>". Logides ainult id-d ja number, mitte aadress ega summa.
 
 ## Verstapost 7 — Üritused
 

@@ -153,7 +153,7 @@ Arve e-kirjad
   7 päeva jooksul arvet saadetud), vaatab ühe kirja eelvaadet ja saadab.
 - Arve on maksenõue, mitte käibemaksuarve, ja **saldot ei muuda**. Sellel on number
   (`2026-0001`, aasta kaupa), saatmise hetke võlasumma, saldo read eelmisest arvest alates
-  (kuni viimased 60 päeva), maksetähtaeg (14 päeva) ja makseinfo: organisatsiooni nimi, IBAN ja
+  (kuni viimased 60 päeva) algsaldo ja lõppsaldoga (= võlg), maksetähtaeg (14 päeva) ja makseinfo: organisatsiooni nimi, IBAN ja
   selgitus "Arve 2026-0001" (mitte viitenumber).
 - Kirjad on **eesti keeles**, eesti vormingutega (`27,40 €`, `30.10.2026`, "Liikmemaks ·
   oktoober 2026"). Liige teatab maksest ikka rakenduses ja admin kinnitab selle tavapäraselt.
@@ -299,7 +299,7 @@ AI abiline (valikuline)
 | `GET /api/admin/invoices/candidates` | admin | negatiivse saldoga liikmed, e-post, viimane arve |
 | `GET /api/admin/invoices/preview?memberId=` | admin | kirja pealkiri ja sisu nagu see saadetaks |
 | `POST /api/admin/invoices` | admin | `{memberIds:[...]}` → saadab, tulemus liikme kaupa |
-| `GET /api/admin/invoices?memberId=` | admin | saadetud arved, uuemad ees |
+| `GET /api/admin/invoices?memberId=&page=` | admin | arved (kõik või ühe liikme), uuemad ees, 20 lehel |
 | `POST /api/admin/invoices/{id}/resend` | admin | ebaõnnestunud kirja uus katse |
 | `GET/POST/PUT /api/admin/levels` | admin | liikmetasemed (nimi, järjekord, aktiivne) |
 | `DELETE /api/admin/levels/{id}` | admin | kustuta kasutamata tase (kasutusel olev → ainult kasutusest maha) |

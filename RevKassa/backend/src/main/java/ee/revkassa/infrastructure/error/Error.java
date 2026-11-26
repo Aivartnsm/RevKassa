@@ -47,6 +47,8 @@ public enum Error {
     WRONG_CURRENT_PIN("Current PIN is wrong.", 143),
     PIN_NOT_AVAILABLE("This PIN cannot be used. Choose another one.", 144),
     NEW_PIN_SAME_AS_CURRENT("The new PIN must differ from the current one.", 145),
+    MEMBER_NOT_IN_DEBT("This member has no debt to invoice.", 146),
+    INVOICE_ALREADY_SENT("This invoice has already been sent.", 147),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

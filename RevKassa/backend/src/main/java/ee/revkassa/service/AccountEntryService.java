@@ -14,6 +14,7 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -50,11 +51,23 @@ public class AccountEntryService {
     @Transactional(readOnly = true)
     public AccountEntryPageDto getMemberEntries(Long memberId, int page) {
         Slice<AccountEntry> entries = accountEntryRepository.findMemberEntries(memberId, PageRequest.of(page, PAGE_SIZE));
-        Map<Long, String> purchaseDescriptions = describePurchasesOf(entries.getContent());
-        List<AccountEntryDto> dtos = entries.getContent().stream()
+        return new AccountEntryPageDto(toAccountEntryDtos(entries.getContent()), page, entries.hasNext());
+    }
+
+    /**
+     * The member's rows after one moment up to and including another, oldest first, described as in the app.
+     * Used for the balance lines of an invoice.
+     */
+    @Transactional(readOnly = true)
+    public List<AccountEntryDto> getMemberEntriesBetween(Long memberId, OffsetDateTime after, OffsetDateTime until) {
+        return toAccountEntryDtos(accountEntryRepository.findMemberEntriesBetween(memberId, after, until));
+    }
+
+    private List<AccountEntryDto> toAccountEntryDtos(List<AccountEntry> entries) {
+        Map<Long, String> purchaseDescriptions = describePurchasesOf(entries);
+        return entries.stream()
                 .map(entry -> toAccountEntryDto(entry, purchaseDescriptions))
                 .toList();
-        return new AccountEntryPageDto(dtos, page, entries.hasNext());
     }
 
     // All lines of the page's purchases in one query: "2 × Saku Originaal, 1 × Õllenaut IPA" per purchase id
