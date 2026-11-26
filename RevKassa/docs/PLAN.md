@@ -306,7 +306,7 @@ AI abiline (valikuline)
 | `GET/POST /api/admin/events` | admin | ürituste nimekiri / loomine |
 | `GET/PUT /api/admin/events/{id}` | admin | ürituse detail tasude, osalejate ja eelarve kokkuvõttega / muutmine (k.a `signupOpen`) |
 | `POST /api/admin/events/{id}/close`, `/cancel` | admin | sulge, või tühista ja tagasta tasud |
-| `PUT /api/admin/events/{id}/fees` | admin | `{fees:[{levelId, amountCents}]}` |
+| `PUT /api/admin/events/{id}/fees` | admin | `{fees:[{levelId, amountCents}], version}` — asendab kogu tasutabeli (puuduv tase = 0) |
 | `POST /api/admin/events/{id}/participants` | admin | `{memberIds:[...]}` → võtab tasud |
 | `DELETE /api/admin/events/{id}/participants/{memberId}` | admin | eemalda, tagastab tasu |
 | `GET/POST/PUT/DELETE /api/admin/events/{id}/budget-lines` | admin | eelarveread |

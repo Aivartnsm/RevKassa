@@ -33,6 +33,7 @@ public class DashboardService {
 
     public static final int LARGEST_DEBTS = 5;
     public static final int TOP_PRODUCTS = 5;
+    public static final int UPCOMING_EVENTS = 3;
 
     private final MemberRepository memberRepository;
     private final MemberMapper memberMapper;
@@ -41,6 +42,7 @@ public class DashboardService {
     private final ProductMapper productMapper;
     private final PurchaseLineRepository purchaseLineRepository;
     private final PurchaseLineMapper purchaseLineMapper;
+    private final EventService eventService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -50,6 +52,7 @@ public class DashboardService {
         addPendingPayments(dto);
         addStockToCheck(dto);
         addTopProductsOf(YearMonth.now(clock), dto);
+        dto.setUpcomingEvents(eventService.getUpcomingEvents(UPCOMING_EVENTS));
         return dto;
     }
 

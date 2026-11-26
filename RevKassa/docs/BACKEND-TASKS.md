@@ -434,13 +434,28 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   muutmisel kohustuslik); mitteaktiivne tase → 403 `138`, v.a liikme praegune tase. `AdminMemberDto`-s
   `levelId` + `levelName`. Tasemel pole `version`-it: samaaegsel muutmisel jääb viimane salvestus.
 
-- [ ] **B28 · Üritused** (M) — pärast B27
+- [x] **B28 · Üritused** (M) — pärast B27
   B18-st: ülevaate kaart "Tulevad üritused" (nimi, aeg · koht, osalejate arv) lisa `DashboardDto`-sse siin.
   `Event` + `EventLevelFee` entiteedid. `GET/POST /api/admin/events`, `GET/PUT
   /api/admin/events/{id}` (detail tasudega taseme kaupa, osalejate arv, eelarve kokkuvõtted),
   `PUT /api/admin/events/{id}/fees`. `CLOSED`/`CANCELLED` üritused on ainult loetavad
   (`ForbiddenException`).
   Valmis, kui: CRUD, tasutabel, staatusereeglid ja optimistlik lukk on testitud.
+  Tehtud (kokku lepitud enne ehitamist):
+  - `EventParticipant` entiteet on olemas ainult lugemiseks (osalejate arv ja `feeIncomeCents` = aktiivsete
+    osalejate `fee_cents` summa); lisamine/eemaldamine B29-s. Eelarve kokkuvõtted tulevad detaili B30-s.
+  - `GET` nimekiri ilma lehtedeta: `PLANNED` ees (varaseim enne), siis teised (uuemad ees);
+    `EventSummaryDto` {eventId, name, startsAt, location, status, signupOpen, participantCount, feeIncomeCents}.
+  - `POST {name ≤100, startsAt, location ≤100, description ≤2000}` → 201 detailiga; `PLANNED`, registreerimine
+    suletud, kõik tasud 0; minevikus algusaeg on lubatud. Kustutamise endpointi pole (tühista).
+  - `PUT {id} {name, startsAt, location, description, signupOpen, version}`; staatust siin ei muudeta.
+  - `PUT {id}/fees {fees:[{levelId, amountCents 0..1 000 000}], version}` **asendab kogu tabeli** (puuduv tase = 0,
+    salvestatakse ainult > 0 read), kordus → 400 `levelIdsUnique`, tundmatu tase → 404; tõstab ürituse `version`-it
+    (ürituse rida uuendatakse enne tasusid, nii et paralleelne salvestus saab 409).
+  - Detail `EventDto`: lisaks `editable`, `createdByName`, `version`, `fees` [{levelId, levelName, levelActive,
+    amountCents}] — kõik aktiivsed tasemed ja mitteaktiivsed ainult tasuga.
+  - `CLOSED`/`CANCELLED` → `PUT` ja `PUT fees` 403 `148 EVENT_NOT_EDITABLE`. Automaatset sulgemist pole.
+  - Ülevaade: `upcomingEvents` — kuni 3 `PLANNED` üritust alates praegusest, varaseim ees, osalejate arvuga.
 
 - [ ] **B29 · Osalejad ja ürituse tasud** (M) — pärast B10, B28
   `POST /api/admin/events/{id}/participants {memberIds}`: liikme kohta kopeeri tase + tasu,

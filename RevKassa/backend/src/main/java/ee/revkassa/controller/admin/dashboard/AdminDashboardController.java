@@ -22,10 +22,11 @@ public class AdminDashboardController {
 
     @GetMapping
     @Operation(summary = "The admin overview: open debts, payments to confirm, stock to check, largest debts and "
-            + "this month's best sellers",
+            + "this month's best sellers and upcoming events",
             description = "Debts are positive owed amounts and include inactive members (active = false). Stock "
                     + "figures count products for sale only: LOW = 0 up to the warning level, NEGATIVE = below 0. "
                     + "largestDebts and topProducts hold at most 5 rows; undone purchases are not counted. "
+                    + "upcomingEvents: at most 3 PLANNED events from now on, soonest first, with active participants. "
                     + "Admin password session only.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),

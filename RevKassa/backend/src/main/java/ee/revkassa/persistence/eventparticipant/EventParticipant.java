@@ -1,0 +1,63 @@
+package ee.revkassa.persistence.eventparticipant;
+
+import ee.revkassa.persistence.event.Event;
+import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.membershiplevel.MembershipLevel;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.OffsetDateTime;
+
+/**
+ * A member on an event, with the level and fee copied when they were added. Only counted so far (B28); adding and
+ * removing come with B29.
+ */
+@Getter
+@Setter
+@Entity
+@Table(name = "event_participant")
+public class EventParticipant {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "member_id", nullable = false)
+    private Member member;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "level_id", nullable = false)
+    private MembershipLevel level;
+
+    @NotNull
+    @Column(name = "fee_cents", nullable = false)
+    private Long feeCents;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = Integer.MAX_VALUE)
+    private EventParticipantStatusEnum status;
+
+    // An admin, or the member themselves (signed up)
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "added_by", nullable = false)
+    private Member addedBy;
+
+    @NotNull
+    @Column(name = "added_at", nullable = false)
+    private OffsetDateTime addedAt;
+
+    @Column(name = "removed_at")
+    private OffsetDateTime removedAt;
+}

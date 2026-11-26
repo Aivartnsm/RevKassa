@@ -1,0 +1,17 @@
+package ee.revkassa.persistence.eventlevelfee;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
+public interface EventLevelFeeRepository extends JpaRepository<EventLevelFee, EventLevelFeeId> {
+
+    @Query("select f from EventLevelFee f where f.event.id = :eventId")
+    List<EventLevelFee> findEventFees(Long eventId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from EventLevelFee f where f.event.id = :eventId")
+    void deleteEventFees(Long eventId);
+}

@@ -26,4 +26,6 @@ public class DashboardDto implements Serializable {
     private YearMonth month;
     // Most units sold this month first
     private List<TopProductDto> topProducts;
+    // Planned events from now on, soonest first ("Tulevad üritused")
+    private List<UpcomingEventDto> upcomingEvents;
 }

@@ -49,6 +49,7 @@ public enum Error {
     NEW_PIN_SAME_AS_CURRENT("The new PIN must differ from the current one.", 145),
     MEMBER_NOT_IN_DEBT("This member has no debt to invoice.", 146),
     INVOICE_ALREADY_SENT("This invoice has already been sent.", 147),
+    EVENT_NOT_EDITABLE("This event is closed or cancelled and can no longer be changed.", 148),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;
