@@ -18,6 +18,8 @@ public class AdminMemberDto implements Serializable {
     private MemberRoleEnum role;
     private Boolean active;
     private Boolean feeExempt;
+    private Long levelId;
+    private String levelName;
     private Long balanceCents;
     private Boolean passwordSet;
     private OffsetDateTime createdAt;

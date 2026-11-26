@@ -293,26 +293,54 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 5 — Admini ülevaade
 
-- [ ] **B18 · Ülevaade** (S) — pärast B09, B16
+- [x] **B18 · Ülevaade** (S) — pärast B09, B16
   `GET /api/admin/dashboard`: avatud võlgade summa ja arv, ootel maksete arv ja summa,
-  madala ja negatiivse laoseisuga tooted, suurimad võlad (top 5).
+  madala ja negatiivse laoseisuga tooted, suurimad võlad (top 5), kaart "Enim ostetud sel kuul"
+  (top 5 toodet jooksva kuu müüdud tükkide järgi, tagasivõetud ostud välja arvatud; viib müügiaruandesse).
   Valmis, kui: näitajad klapivad testandmetega.
+  Tehtud: `DashboardDto` — `openDebtCents`, `debtorCount` (positiivsed võlasummad, **k.a mitteaktiivsed
+  liikmed**), `pendingPaymentCount`, `pendingPaymentCents`, `lowStockCount` (laoseis 0…hoiatustase),
+  `negativeStockCount` (< 0), `stockToCheck` (`LOW`/`NEGATIVE`, negatiivsed ees; ainult müügil tooted),
+  `largestDebts` (top 5, `active = false` = endine liige), `month` + `topProducts` (top 5 tükkide järgi, kuu
+  Tallinna ajas). Kõik arvutab andmebaas. Testid võrdlevad näitajaid enne ja pärast oma ridu (arenduse
+  andmetest sõltumata). "Tulevad üritused" lisandub ürituste taskiga (B28).
 
-- [ ] **B19 · Müügiaruanne** (S) — pärast B11
-  `GET /api/admin/reports/sales?from=&to=`: kogused ja tulu toote ja kuu kaupa,
-  tagasivõetud ostud välja arvatud.
+- [x] **B19 · Müügiaruanne** (S) — pärast B11
+  `GET /api/admin/reports/sales?from=YYYY-MM-DD&to=YYYY-MM-DD`: müüdud tükid ja tulu toote kaupa,
+  enim müüdud ees, tagasivõetud ostud välja arvatud, kokkuvõte all. `from`/`to` on kalendripäevad
+  Tallinna ajas, mõlemad kaasa arvatud (ost kell 00:30 läheb uuele päevale); `from` > `to` → 400.
+  Kogused osturidadelt (`purchase_line` `COMPLETED` ostudel), tulu = kogus × ostuhetke hind.
+  Valmis, kui: päeva piirid (Tallinna kesköö), tagasivõetud ost, järjestus ja vale vahemik on testitud.
+  Tehtud: mõlemad kuupäevad valikulised (`from` puudub → esimesest müügist, `to` puudub → täna); `from` > `to`
+  → 400 `142`, vigane kuupäev → 400 `104`. Vastus `{from, to, months, products:[{productId, name, active, quantity,
+  revenueCents, costCents, marginCents, unitsWithoutCost, months:[{month, quantity}]}], totalQuantity,
+  totalRevenueCents, totalCostCents, totalMarginCents, unitsWithoutCost}`: müüdud tooted tükkide järgi, siis
+  aktiivsed müümata tooted nulliga (peidetud müümata välja). Nimi on toote praegune nimi.
+  **Ostuhind ja marginaal** (kasutaja otsus): uus `product.cost_cents` (admin määrab toote vormis, valikuline,
+  liikmele ei näidata) ja `purchase_line.unit_cost_cents` (ostuhind müügi hetkel, kopeeritakse ostul). Kulu =
+  rea ostuhind, selle puudumisel toote praegune ostuhind; kui ka see puudub, on toote `costCents`/`marginCents`
+  null ja tükid lähevad `unitsWithoutCost`-i (kokkuvõtte kulu/marginaal ainult teadaoleva ostuhinnaga toodetest).
+  Muudatusskript `2026-11-26_ostuhind.sql`; tarne ühiku hind ostuhinda ei muuda.
 
 ## Verstapost 6 — Tasud ja arved
 
-- [ ] **B22 · Liikmemaks taseme kaupa** (S) — pärast B04, B27
+- [x] **B22 · Liikmemaks taseme kaupa** (S) — pärast B04, B27
   `MembershipFee` entiteet (tase, kuu, summa). `GET /api/admin/fees` → praegune tasu taseme
   kaupa + ajalugu. `POST /api/admin/fees` `{validFrom: "YYYY-MM", fees:[{levelId, amountCents ≥ 0}]}`:
   kuu peab olema tulevikus või jooksev kuu, kui selle eest pole veel tasu võetud; tasemel on
   selle kuu rida juba olemas → `ForbiddenException`. `feeFor(level, month)` = hiliseim
   `valid_from` ≤ kuu, muidu 0.
   Valmis, kui: ajaloo otsing taseme kaupa, tasudeta tase, kuu reeglid ja 0 € on testitud.
+  Tehtud: `GET` → kõik tasemed järjekorras: `{levelId, name, active, currentAmountCents, upcoming, history}`
+  (`upcoming` = lähim plaanitud muudatus või null; `history` uuemad ees, plaanitud read k.a; kuud kujul "YYYY-MM").
+  `POST` → 200 sama vaatega; ainult osa tasemeid on lubatud, kõik salvestatakse või mitte midagi.
+  Möödunud kuu → 403 `139`; kuu, mille eest sellelt tasemelt on juba tasu võetud → 403 `140` (kontroll taseme kaupa,
+  nii et uuele/tasuta tasemele saab jooksva kuu tasu panna). Sama kuu uuesti salvestamine **asendab** rea, kuni seda
+  kuud pole sellelt tasemelt võetud (vale summa saab parandada). Summa 0–10 000 €; sama tase kaks korda → 400
+  (`fieldErrors.levelIdsUnique`); tundmatu tase → 404. Salvestamine lukustab tasemete read.
+  `MembershipFeeService.feeFor(levelId, month)` B23 jaoks.
 
-- [ ] **B23 · Kuine tasutöö** (M) — pärast B10, B17, B22 (tasemete tasud)
+- [x] **B23 · Kuine tasutöö** (M) — pärast B10, B17, B22 (tasemete tasud)
   `MembershipChargeService.chargeMonth(month)`: iga aktiivse, tasust vabastamata liikme kohta,
   kes on loodud enne kuud ja kellelt pole veel tasu võetud, võtab `feeFor(member.level, month)`
   (0 → jätab vahele), kirjutab `membership_charge` (tasemega) + ühe `MEMBERSHIP_FEE` rea
@@ -320,15 +348,34 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   `@Scheduled` iga päev kell 06:00 (Europe/Tallinn) ja üks kord käivitumisel jooksva kuu jaoks.
   Unikaalne `(member_id, month)` kaitseb paralleelse jooksu eest. Ajaloo kirjeldus:
   "Liikmemaks · oktoober 2026".
+  B22-st: tasu loetakse **tasustatava kuu** järgi (`feeFor(level, month)`), mitte tänase tasu järgi — järeletehtud
+  vana kuu saab selle kuu tasu, tasu tõus ei muuda varasemaid kuid. Loe taseme tasu taseme rea lukuga (sama, mida
+  `POST /api/admin/fees` võtab), et samal ajal salvestatav uus tasu ei jääks poolikult kehtima.
   Valmis, kui: fikseeritud `Clock`-iga testid katavad 1. kuupäeva, hilisema järeletegemise,
   kaks jooksu (topelttasu pole), eri tasemetelt eri summad, vabastatud/mitteaktiivsed/uued
   liikmed vahele jäetud, tasu 0 ei kirjuta midagi, invariandid kehtivad.
+  Tehtud: `MembershipChargeService.chargeMonth(month)` (iga liige oma transaktsioonis, viga logitakse ja järgmine
+  jooks proovib uuesti; logirida `Monthly fees run: month, charged, skipped, failed`) ja `chargeMember(memberId,
+  month)`: liikme rida lukus → tingimused uuesti → taseme rida jagatud lukuga → `feeFor(level, month)`.
+  `MembershipChargeScheduler`: käivitumisel + iga päev 06:00 (Europe/Tallinn) **ainult jooksev kuu**; seade
+  `revkassa.membership-fees.job-enabled` (testides `false`, sest testid kasutavad arenduse andmebaasi).
+  "Loodud enne kuud" = `created_at` < kuu algus Tallinna ajas. Liige, kes muutub kuu keskel tasustatavaks
+  (taasaktiveeritud, vabastus eemaldatud, tasemele pandi jooksva kuu tasu), saab järgmisel päeval terve kuu tasu —
+  admin saab selle B24-ga tühistada. `account_entry.membership_charge_id` on nüüd seos (`MembershipCharge`),
+  ajalugu näitab "Liikmemaks · november 2026". Testid kuuga parameetrina (fikseeritud kella konteksti pole vaja).
 
-- [ ] **B24 · Tasude nimekiri ja tühistamine** (S) — pärast B23
+- [x] **B24 · Tasude nimekiri ja tühistamine** (S) — pärast B23
   `GET /api/admin/fees/charges?month=YYYY-MM` (liige, summa, staatus, kokkuvõtted).
   `POST /api/admin/fees/charges/{id}/waive` `{note}` (kohustuslik) → `WAIVED` +
   `MEMBERSHIP_FEE_WAIVER` rida summaga +summa. Teist korda → `ForbiddenException`.
   Valmis, kui: tühistamine, topelt-tühistamine ja invariant on testitud.
+  Tehtud: `GET` (`month` valikuline → jooksev kuu) → `{month, charges:[{chargeId, memberId, memberName, levelName,
+  amountCents, status, createdAt, waivedAt, waivedByName, waiveNote}], chargedCount, chargedTotalCents, waivedCount,
+  waivedTotalCents}` nime järgi; vigane kuu → 400 `104`. `waive` → 200 uuendatud tasuga; märkus kohustuslik (≤ 500),
+  liige näeb ajaloos "Liikmemaksu tühistus · november 2026 · <märkus>"; teist korda → 403 `141`; tundmatu → 404.
+  Iga kuu ja ka mitteaktiivne liige; tühistus on lõplik (kuu eest ei võeta enam tasu, tagasi ainult parandusega).
+  Liikme rida lukustatakse enne. Uus unikaalne indeks `ux_account_entry_membership_charge_id_type`
+  (muudatusskript `2026-11-26_tasu-ridade-unikaalsus.sql`).
 
 (B25 · E-kirjade saatmine on verstapostis 1, sest parooli lingid vajavad seda.)
 
@@ -347,14 +394,22 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 7 — Üritused
 
-- [ ] **B27 · Liikmetasemed** (S) — pärast B17
+- [x] **B27 · Liikmetasemed** (S) — pärast B17
   `MembershipLevel` entiteet. `GET/POST/PUT /api/admin/levels` (nimi unikaalne tõstutundetult,
   järjekord, aktiivne). Kasutusest mahavõtmine jätab liikmed alles; kustutamine ainult kasutamata
   tasemel (muidu `ForbiddenException`). `member.level_id` liikmete halduses; uus liige saab
   esimese aktiivse taseme.
   Valmis, kui: unikaalne nimi, mahavõtmine vs kustutamine ja vaiketase on testitud.
+  Tehtud: `GET` (järjekorras, `MembershipLevelDto`: levelId, name, sortOrder, active, memberCount = aktiivsed liikmed,
+  deletable), `POST {name}` → 201 (aktiivne, viimaseks), `PUT /{id} {name, sortOrder, active}`, `DELETE /{id}` → 204.
+  Vead: nimi võetud (tõstutundetult) → 403 `135`; kasutusel (liige, k.a mitteaktiivne, kuutasu, tasurida, ürituse
+  tasu või osaleja) → 403 `136`; viimast aktiivset taset ei saa maha võtta ega kustutada → 403 `137` (aktiivsed
+  read lukustatakse). Liikmete halduses `levelId` (loomisel valikuline → esimene aktiivne `sortOrder` järgi,
+  muutmisel kohustuslik); mitteaktiivne tase → 403 `138`, v.a liikme praegune tase. `AdminMemberDto`-s
+  `levelId` + `levelName`. Tasemel pole `version`-it: samaaegsel muutmisel jääb viimane salvestus.
 
 - [ ] **B28 · Üritused** (M) — pärast B27
+  B18-st: ülevaate kaart "Tulevad üritused" (nimi, aeg · koht, osalejate arv) lisa `DashboardDto`-sse siin.
   `Event` + `EventLevelFee` entiteedid. `GET/POST /api/admin/events`, `GET/PUT
   /api/admin/events/{id}` (detail tasudega taseme kaupa, osalejate arv, eelarve kokkuvõtted),
   `PUT /api/admin/events/{id}/fees`. `CLOSED`/`CANCELLED` üritused on ainult loetavad

@@ -253,6 +253,7 @@ public class PurchaseService {
         line.setProduct(product);
         line.setQuantity(quantity);
         line.setUnitPriceCents(product.getPriceCents());
+        line.setUnitCostCents(product.getCostCents());
         return line;
     }
 

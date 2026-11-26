@@ -40,15 +40,15 @@ INSERT INTO password_token (id, member_id, token_hash, purpose, expires_at, used
 UPDATE organisation SET name = 'MTÜ Näidisklubi', iban = 'EE382200221020145685', updated_by = 1, updated_at = '2026-08-01 10:00+03' WHERE id = 1;
 
 -- product (laoseis lõpuks: 22, 15, 18, 12, 5, 3, 9, 10, 0)
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku Originaal', 'Lager', 500, 250, 6, 1, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'A. Le Coq Premium', 'Lager', 500, 250, 6, 2, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku Kuld', 'Lager', 500, 280, 6, 3, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Õllenaut IPA', 'IPA', 330, 450, 6, 4, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Pühaste Must', 'Stout', 330, 450, 6, 5, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Põhjala Öö', 'Imperial porter', 330, 550, 6, 6, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Sauna Session', 'Pale ale', 330, 400, 6, 7, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku 0,0', 'Alkoholivaba', 500, 200, 6, 8, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
-INSERT INTO product (id, name, style, volume_ml, price_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Alexander', 'Lager', 500, 300, 6, 9, false, '2026-08-01 10:00+03', '2026-09-30 18:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku Originaal', 'Lager', 500, 250, 110, 6, 1, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'A. Le Coq Premium', 'Lager', 500, 250, 110, 6, 2, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku Kuld', 'Lager', 500, 280, 130, 6, 3, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Õllenaut IPA', 'IPA', 330, 450, 240, 6, 4, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Pühaste Must', 'Stout', 330, 450, 250, 6, 5, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Põhjala Öö', 'Imperial porter', 330, 550, 320, 6, 6, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Sauna Session', 'Pale ale', 330, 400, 210, 6, 7, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Saku 0,0', 'Alkoholivaba', 500, 200, 90, 6, 8, true, '2026-08-01 10:00+03', '2026-08-01 10:00+03');
+INSERT INTO product (id, name, style, volume_ml, price_cents, cost_cents, low_stock_threshold, sort_order, active, created_at, updated_at) VALUES (default, 'Alexander', 'Lager', 500, 300, null, 6, 9, false, '2026-08-01 10:00+03', '2026-09-30 18:00+03');
 
 
 -- member_favourite (Mari: Õllenaut IPA, Saku Originaal — nagu lõuendil)

@@ -2,6 +2,7 @@ package ee.revkassa.service;
 
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.membershipcharge.MembershipCharge;
 import ee.revkassa.persistence.payment.Payment;
 import ee.revkassa.persistence.purchase.Purchase;
 import org.junit.jupiter.api.Test;
@@ -94,9 +95,39 @@ class AccountPostingTest {
     }
 
     @Test
+    void membershipFee_lowersTheBalanceByTheChargedAmountWithoutCreatedBy() {
+        MembershipCharge charge = new MembershipCharge();
+        charge.setMember(member);
+        charge.setAmountCents(3540L);
+
+        AccountPosting posting = AccountPosting.membershipFee(charge);
+
+        assertThat(posting.member()).isSameAs(member);
+        assertThat(posting.type()).isEqualTo(AccountEntryTypeEnum.MEMBERSHIP_FEE);
+        assertThat(posting.amountCents()).isEqualTo(-3540);
+        assertThat(posting.membershipCharge()).isSameAs(charge);
+        assertThat(posting.createdBy()).isNull();
+    }
+
+    @Test
+    void membershipFeeWaiver_givesTheWholeChargedAmountBackWithNoteAndAdmin() {
+        MembershipCharge charge = new MembershipCharge();
+        charge.setMember(member);
+        charge.setAmountCents(3540L);
+
+        AccountPosting posting = AccountPosting.membershipFeeWaiver(charge, "Juhatuse otsus", admin);
+
+        assertThat(posting.type()).isEqualTo(AccountEntryTypeEnum.MEMBERSHIP_FEE_WAIVER);
+        assertThat(posting.amountCents()).isEqualTo(3540);
+        assertThat(posting.membershipCharge()).isSameAs(charge);
+        assertThat(posting.note()).isEqualTo("Juhatuse otsus");
+        assertThat(posting.createdBy()).isSameAs(admin);
+    }
+
+    @Test
     void waiverWithoutNote_isRefused() {
         assertThatThrownBy(() -> new AccountPosting(member, AccountEntryTypeEnum.MEMBERSHIP_FEE_WAIVER, 500,
-                null, null, 4L, null, null, admin))
+                null, null, new MembershipCharge(), null, null, admin))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -117,7 +148,7 @@ class AccountPostingTest {
             case NONE -> new AccountPosting(member, type, amountCents, null, null, null, null, "märkus", admin);
             case PURCHASE -> new AccountPosting(member, type, amountCents, new Purchase(), null, null, null, "märkus", member);
             case PAYMENT -> new AccountPosting(member, type, amountCents, null, new Payment(), null, null, "märkus", admin);
-            case MEMBERSHIP_CHARGE -> new AccountPosting(member, type, amountCents, null, null, id, null, "märkus", null);
+            case MEMBERSHIP_CHARGE -> new AccountPosting(member, type, amountCents, null, null, new MembershipCharge(), null, "märkus", null);
             case EVENT_PARTICIPANT -> new AccountPosting(member, type, amountCents, null, null, null, id, "märkus", admin);
         };
     }

@@ -106,6 +106,7 @@ Link kehtib, kui `used_at is null` ja `expires_at > now()`. Ühekordne.
 | style | text | nt "Lager", valikuline |
 | volume_ml | integer | nt 500 |
 | price_cents | bigint not null | praegune müügihind, > 0 |
+| cost_cents | bigint | praegune ostuhind (admin muudab), ≥ 0; null = määramata. Ainult adminile, marginaali jaoks |
 | stock_qty | integer not null default 0 | vahemälu `sum(stock_movement.quantity_delta)`; võib minna negatiivseks |
 | low_stock_threshold | integer not null default 6 | ülevaate hoiatuse piir |
 | sort_order | integer not null default 0 | järjekord ostuvaates |
@@ -133,6 +134,7 @@ Link kehtib, kui `used_at is null` ja `expires_at > now()`. Ühekordne.
 | product_id | bigint not null FK product | |
 | quantity | integer not null | > 0 |
 | unit_price_cents | bigint not null | hind müügi hetkel |
+| unit_cost_cents | bigint | toote ostuhind müügi hetkel (≥ 0); null = tollal määramata → müügiaruanne kasutab toote praegust ostuhinda |
 
 ### organisation
 | veerg | tüüp | märkused |
@@ -182,7 +184,7 @@ eelistus, mitte pearaamat.
 | amount_cents | bigint not null | märgiga, ≠ 0: ost ja tasu negatiivsed, makse ja tühistus positiivsed |
 | purchase_id | bigint FK purchase | `PURCHASE*` jaoks |
 | payment_id | bigint FK payment | `PAYMENT` jaoks, unikaalne |
-| membership_charge_id | bigint FK membership_charge | `MEMBERSHIP_FEE*` jaoks |
+| membership_charge_id | bigint FK membership_charge | `MEMBERSHIP_FEE*` jaoks; unikaalne koos `type`-iga (üks tasu- ja üks tühistusrida tasu kohta) |
 | event_participant_id | bigint FK event_participant | `EVENT_FEE*` jaoks |
 | note | text | kohustuslik `ADJUSTMENT` ja `MEMBERSHIP_FEE_WAIVER` puhul |
 | created_by | bigint FK member | null = kirjutas rakendus ise (kuine tasutöö) |
@@ -212,8 +214,9 @@ eelistus, mitte pearaamat.
 | created_at | timestamptz not null | |
 
 Unikaalne `(level_id, valid_from)`. Taseme tasu kuu jaoks on tema rida, mille `valid_from` on
-hiliseim ≤ see kuu; rea puudumine = 0. Ridu ainult lisatakse, ei muudeta, nii et ajalugu jääb
-nähtavaks. `2_create.sql` tasusid ei loo (adminid määravad).
+hiliseim ≤ see kuu; rea puudumine = 0. Rida, mille kuu eest on sellelt tasemelt juba tasu võetud, ei muutu enam
+kunagi (tasu kopeeritakse `membership_charge`-i), nii et ajalugu jääb nähtavaks ja tasu tõus ei muuda varasemaid
+kuid. Veel võtmata kuu rida võib admin asendada (vale summa parandamine). `2_create.sql` tasusid ei loo (adminid määravad).
 
 ### membership_charge
 | veerg | tüüp | märkused |

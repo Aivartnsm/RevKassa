@@ -1,5 +1,7 @@
 package ee.revkassa.persistence.product;
 
+import ee.revkassa.controller.admin.dashboard.dto.StockCheckStatusEnum;
+import ee.revkassa.controller.admin.dashboard.dto.StockToCheckDto;
 import ee.revkassa.controller.admin.product.dto.AdminProductDto;
 import ee.revkassa.controller.admin.product.dto.ProductCreateRequestDto;
 import ee.revkassa.controller.admin.product.dto.ProductUpdateRequestDto;
@@ -10,7 +12,7 @@ import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = StockCheckStatusEnum.class)
 public interface ProductMapper {
 
     @Mapping(source = "id", target = "id")
@@ -28,6 +30,7 @@ public interface ProductMapper {
     @Mapping(source = "style", target = "style")
     @Mapping(source = "volumeMl", target = "volumeMl")
     @Mapping(source = "priceCents", target = "priceCents")
+    @Mapping(source = "costCents", target = "costCents")
     @Mapping(source = "stockQty", target = "stockQty")
     @Mapping(source = "lowStockThreshold", target = "lowStockThreshold")
     @Mapping(source = "sortOrder", target = "sortOrder")
@@ -39,11 +42,21 @@ public interface ProductMapper {
 
     List<AdminProductDto> toAdminProductDtos(List<Product> products);
 
+    @Mapping(source = "id", target = "productId")
+    @Mapping(source = "name", target = "name")
+    @Mapping(source = "stockQty", target = "stockQty")
+    @Mapping(source = "lowStockThreshold", target = "lowStockThreshold")
+    @Mapping(target = "status", expression = "java(product.getStockQty() < 0 ? StockCheckStatusEnum.NEGATIVE : StockCheckStatusEnum.LOW)")
+    StockToCheckDto toStockToCheckDto(Product product);
+
+    List<StockToCheckDto> toStockToCheckDtos(List<Product> products);
+
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "name", target = "name")
     @Mapping(source = "style", target = "style")
     @Mapping(source = "volumeMl", target = "volumeMl")
     @Mapping(source = "priceCents", target = "priceCents")
+    @Mapping(source = "costCents", target = "costCents")
     @Mapping(target = "stockQty", ignore = true)
     @Mapping(source = "lowStockThreshold", target = "lowStockThreshold")
     @Mapping(source = "sortOrder", target = "sortOrder")
@@ -58,6 +71,7 @@ public interface ProductMapper {
     @Mapping(source = "style", target = "style")
     @Mapping(source = "volumeMl", target = "volumeMl")
     @Mapping(source = "priceCents", target = "priceCents")
+    @Mapping(source = "costCents", target = "costCents")
     @Mapping(target = "stockQty", ignore = true)
     @Mapping(source = "lowStockThreshold", target = "lowStockThreshold")
     @Mapping(source = "sortOrder", target = "sortOrder")

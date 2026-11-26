@@ -4,6 +4,7 @@ import ee.revkassa.persistence.member.MemberRoleEnum;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -32,6 +33,11 @@ public class MemberUpdateRequestDto implements Serializable {
 
     @NotNull
     private Boolean feeExempt;
+
+    // An inactive level only if the member already has it
+    @NotNull
+    @Positive
+    private Long levelId;
 
     // The version the admin loaded; an older one means someone else saved in between (409)
     @NotNull

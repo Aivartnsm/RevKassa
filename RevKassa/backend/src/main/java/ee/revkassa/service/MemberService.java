@@ -59,7 +59,8 @@ public class MemberService {
         Member admin = getValidMemberBy(adminId);
         validateEmailFree(request.getEmail(), null);
         String pin = pinService.generateUniquePin();
-        Member member = memberRepository.save(createMember(request, pin));
+        MembershipLevel level = request.getLevelId() == null ? getFirstActiveLevel() : getValidActiveLevelBy(request.getLevelId());
+        Member member = memberRepository.save(createMember(request, pin, level));
         passwordLinkService.send(member, PasswordTokenPurposeEnum.INVITE, admin);
         log.info("Member created: memberId={}, role={}, adminId={}", member.getId(), member.getRole(), adminId);
         return new MemberCreatedDto(memberMapper.toAdminMemberDto(member), pin);
@@ -71,16 +72,18 @@ public class MemberService {
         validateVersion(member, request.getVersion());
         validateEmailFree(request.getEmail(), memberId);
         validateAnActiveAdminRemains(member, request);
+        MembershipLevel level = getValidLevelForMemberBy(request.getLevelId(), member);
         boolean emailChanged = !member.getEmail().equalsIgnoreCase(request.getEmail());
         memberMapper.updateMember(request, member);
         member.setDisplayName(request.getDisplayName().strip());
+        member.setLevel(level);
         if (emailChanged) {
             // A link sent to the old address must not set the password of this account any more
             passwordLinkService.cancelOpenLinks(member);
         }
         memberRepository.flush();
-        log.info("Member updated: memberId={}, role={}, active={}, feeExempt={}, emailChanged={}, adminId={}",
-                memberId, member.getRole(), member.getActive(), member.getFeeExempt(), emailChanged, adminId);
+        log.info("Member updated: memberId={}, role={}, active={}, feeExempt={}, levelId={}, emailChanged={}, adminId={}",
+                memberId, member.getRole(), member.getActive(), member.getFeeExempt(), level.getId(), emailChanged, adminId);
         return memberMapper.toAdminMemberDto(member);
     }
 
@@ -134,24 +137,45 @@ public class MemberService {
                 });
     }
 
-    private Member createMember(MemberCreateRequestDto request, String pin) {
+    private Member createMember(MemberCreateRequestDto request, String pin, MembershipLevel level) {
         Member member = memberMapper.toMember(request);
         member.setDisplayName(request.getDisplayName().strip());
         member.setPinHmac(pinService.hash(pin));
         member.setBalanceCents(0L);
         member.setActive(true);
-        member.setLevel(getFirstActiveLevel());
+        member.setLevel(level);
         OffsetDateTime now = OffsetDateTime.now(clock);
         member.setPinChangedAt(now);
         member.setCreatedAt(now);
         return member;
     }
 
-    // B27 lets the admin choose the level; until then every new member gets the first one
+    // MembershipLevelService keeps at least one level active
     private MembershipLevel getFirstActiveLevel() {
         return membershipLevelRepository.findAllActive().stream()
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("No active membership level: run docs/database/2_create.sql"));
+    }
+
+    private MembershipLevel getValidActiveLevelBy(Long levelId) {
+        MembershipLevel level = getValidLevelBy(levelId);
+        if (!level.getActive()) {
+            throw new ForbiddenException(Error.LEVEL_NOT_ACTIVE);
+        }
+        return level;
+    }
+
+    // A deactivated level stays allowed for the members who already have it, so their other fields can still be edited
+    private MembershipLevel getValidLevelForMemberBy(Long levelId, Member member) {
+        if (levelId.equals(member.getLevel().getId())) {
+            return member.getLevel();
+        }
+        return getValidActiveLevelBy(levelId);
+    }
+
+    private MembershipLevel getValidLevelBy(Long levelId) {
+        return membershipLevelRepository.findById(levelId)
+                .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
     }
 
     // JPA checks the version it loaded itself; this compares the version the admin's form was loaded with

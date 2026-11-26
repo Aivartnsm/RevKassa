@@ -11,9 +11,10 @@ public interface AccountEntryRepository extends JpaRepository<AccountEntry, Long
     long sumAmountCents(Long memberId);
 
     // A Slice reads one row more than the page instead of counting all rows; id breaks ties within the same moment.
-    // The payment comes along in the same query: its method is part of the description.
+    // The payment and the fee charge come along in the same query: the payment method and the fee's month are part
+    // of the description.
     @Query("""
-            select e from AccountEntry e left join fetch e.payment
+            select e from AccountEntry e left join fetch e.payment left join fetch e.membershipCharge
             where e.member.id = :memberId
             order by e.createdAt desc, e.id desc""")
     Slice<AccountEntry> findMemberEntries(Long memberId, Pageable pageable);

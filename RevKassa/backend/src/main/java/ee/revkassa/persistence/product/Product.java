@@ -35,6 +35,10 @@ public class Product {
     @Column(name = "price_cents", nullable = false)
     private Long priceCents;
 
+    // Current purchase price, admin only; null = not set. Copied to each sale line for the margin
+    @Column(name = "cost_cents")
+    private Long costCents;
+
     // Cache of sum(stock_movement.quantity_delta); changed only by StockService.move with one SQL update,
     // so this field can be out of date in memory after a move in the same transaction
     @NotNull

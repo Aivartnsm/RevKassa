@@ -40,6 +40,7 @@ CREATE TABLE product (
     style               text,
     volume_ml           integer,
     price_cents         bigint      NOT NULL,
+    cost_cents          bigint,
     stock_qty           integer     NOT NULL DEFAULT 0,
     low_stock_threshold integer     NOT NULL DEFAULT 6,
     sort_order          integer     NOT NULL DEFAULT 0,
@@ -48,7 +49,8 @@ CREATE TABLE product (
     updated_at          timestamptz NOT NULL DEFAULT now(),
     version             bigint      NOT NULL DEFAULT 0,
     CONSTRAINT product_pk PRIMARY KEY (id),
-    CONSTRAINT ck_product_price_cents CHECK (price_cents > 0)
+    CONSTRAINT ck_product_price_cents CHECK (price_cents > 0),
+    CONSTRAINT ck_product_cost_cents CHECK (cost_cents >= 0)
 );
 
 -- Table: purchase
@@ -73,8 +75,10 @@ CREATE TABLE purchase_line (
     product_id       bigint  NOT NULL,
     quantity         integer NOT NULL,
     unit_price_cents bigint  NOT NULL,
+    unit_cost_cents  bigint,
     CONSTRAINT purchase_line_pk PRIMARY KEY (id),
-    CONSTRAINT ck_purchase_line_quantity CHECK (quantity > 0)
+    CONSTRAINT ck_purchase_line_quantity CHECK (quantity > 0),
+    CONSTRAINT ck_purchase_line_unit_cost_cents CHECK (unit_cost_cents >= 0)
 );
 
 -- Table: payment
@@ -358,6 +362,8 @@ CREATE UNIQUE INDEX ux_purchase_request_id ON purchase (request_id);
 CREATE INDEX ix_payment_status_reported_at ON payment (status, reported_at);
 CREATE INDEX ix_payment_member_id_status_reported_at ON payment (member_id, status, reported_at DESC);
 CREATE UNIQUE INDEX ux_account_entry_payment_id ON account_entry (payment_id);
+-- liikmemaksul kõige rohkem üks MEMBERSHIP_FEE ja üks MEMBERSHIP_FEE_WAIVER rida
+CREATE UNIQUE INDEX ux_account_entry_membership_charge_id_type ON account_entry (membership_charge_id, type);
 CREATE INDEX ix_account_entry_member_id_created_at ON account_entry (member_id, created_at DESC);
 CREATE INDEX ix_stock_movement_product_id_created_at ON stock_movement (product_id, created_at DESC);
 CREATE UNIQUE INDEX ux_member_favourite_member_id_position ON member_favourite (member_id, position);

@@ -104,6 +104,8 @@ Raha
 - Saldo muutub ainult `account_entry` rea kaudu, mis kirjutatakse samas transaktsioonis
   vahemällu salvestatud `member.balance_cents` uuendusega.
 - Ühiku hind kopeeritakse igale ostureale, et hilisemad hinnamuutused ajalugu ümber ei kirjutaks.
+  Samamoodi kopeeritakse toote ostuhind (admin määrab toote vormis, liige seda ei näe), et müügiaruande
+  marginaal ei muutuks tagantjärele; enne ostuhinna määramist tehtud müügid kasutavad toote praegust ostuhinda.
 
 Ostud
 - Liige võib oma ostu tagasi võtta 10 minuti jooksul; admin võib tagasi võtta mis tahes ostu.
@@ -127,7 +129,9 @@ Ladu
 Liikmemaks
 - Tasu sõltub liikme **tasemest**: üks summa taseme kohta, salvestatud koos kuuga, millest see
   kehtib (`membership_fee`: tase + kuu + summa). Admin muudab tasusid, salvestades ühe või mitme
-  taseme uued summad alates mingist kuust; vanad kuud jäävad vanade summadega. Taseme tasu 0 €
+  taseme uued summad alates mingist kuust (jooksev kuu ainult siis, kui sellelt tasemelt pole selle kuu eest veel
+  tasu võetud); vanad kuud jäävad vanade summadega, nii et maksmata tasud jäävad vana summaga ja uus summa
+  lisandub alles järgmistele kuudele. Veel võtmata kuu tasu saab parandada. Taseme tasu 0 €
   tähendab, et sellelt tasemelt tasu ei võeta (nt Auliige). Uus tase on tasuta, kuni tasu määratakse.
 - Tasu läheb liikme saldole nagu ost. "Makstud" tähendab seega, et saldo ei ole negatiivne;
   tasumata tasud on nähtavad võlana ja neid katavad arve e-kirjad.
@@ -135,7 +139,9 @@ Liikmemaks
   tasust vabastatud** ja liitus enne seda kuud — **tema taseme tasu sel päeval** (tase ja summa
   kopeeritakse tasureale). Taseme muutus kehtib järgmisest tasust. Töö jookseb ka iga päev ja
   käivitumisel ning täidab ainult puuduvad tasud, nii et 1. kuupäeval maas olnud server teeb
-  need järele. Unikaalne `(member, month)` rida teeb topelttasu võimatuks.
+  need järele (ainult jooksev kuu). Liige, kes muutub kuu keskel tasustatavaks (nt taasaktiveeritud), saab
+  järgmisel hommikul terve kuu tasu; admin saab selle vajadusel tühistada. Unikaalne `(member, month)` rida teeb
+  topelttasu võimatuks.
 - Admin võib liikme tasust vabastada (nt auliikmed) ja üksiku tasu märkusega **tühistada**,
   mis kirjutab kompenseeriva rea. Tühistatud tasu ei saa uuesti tühistada.
 - Liige näeb saldo ajaloos "Liikmemaks · oktoober 2026".
@@ -296,6 +302,7 @@ AI abiline (valikuline)
 | `GET /api/admin/invoices?memberId=` | admin | saadetud arved, uuemad ees |
 | `POST /api/admin/invoices/{id}/resend` | admin | ebaõnnestunud kirja uus katse |
 | `GET/POST/PUT /api/admin/levels` | admin | liikmetasemed (nimi, järjekord, aktiivne) |
+| `DELETE /api/admin/levels/{id}` | admin | kustuta kasutamata tase (kasutusel olev → ainult kasutusest maha) |
 | `GET/POST /api/admin/events` | admin | ürituste nimekiri / loomine |
 | `GET/PUT /api/admin/events/{id}` | admin | ürituse detail tasude, osalejate ja eelarve kokkuvõttega / muutmine (k.a `signupOpen`) |
 | `POST /api/admin/events/{id}/close`, `/cancel` | admin | sulge, või tühista ja tagasta tasud |
@@ -306,7 +313,7 @@ AI abiline (valikuline)
 | `GET /api/admin/assistant/status` | admin | `{enabled}` |
 | `POST /api/admin/events/{id}/assistant` | admin | `{kind: BUDGET\|QUANTITIES\|RECIPE\|QUESTION, question}` → `{answer, suggestedLines}` |
 | `GET /api/admin/dashboard` | admin | ülevaate näitajad |
-| `GET /api/admin/reports/sales?from=&to=` | admin | kogused ja tulu toote ja kuu kaupa |
+| `GET /api/admin/reports/sales?from=&to=` | admin | müüdud tükid, tulu, ostuhind ja marginaal toote (ja kuu) kaupa kuupäevade vahemikus (Tallinna aeg, mõlemad kaasa arvatud; mõlemad valikulised) |
 
 ## Vaated
 

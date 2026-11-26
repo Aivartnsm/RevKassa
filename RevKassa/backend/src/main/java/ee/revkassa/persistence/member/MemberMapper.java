@@ -1,5 +1,6 @@
 package ee.revkassa.persistence.member;
 
+import ee.revkassa.controller.admin.dashboard.dto.DebtorDto;
 import ee.revkassa.controller.admin.member.dto.AdminMemberDto;
 import ee.revkassa.controller.admin.member.dto.MemberCreateRequestDto;
 import ee.revkassa.controller.admin.member.dto.MemberUpdateRequestDto;
@@ -27,6 +28,8 @@ public interface MemberMapper {
     @Mapping(source = "role", target = "role")
     @Mapping(source = "active", target = "active")
     @Mapping(source = "feeExempt", target = "feeExempt")
+    @Mapping(source = "level.id", target = "levelId")
+    @Mapping(source = "level.name", target = "levelName")
     @Mapping(source = "balanceCents", target = "balanceCents")
     @Mapping(target = "passwordSet", expression = "java(member.getPasswordHash() != null)")
     @Mapping(source = "createdAt", target = "createdAt")
@@ -34,6 +37,14 @@ public interface MemberMapper {
     AdminMemberDto toAdminMemberDto(Member member);
 
     List<AdminMemberDto> toAdminMemberDtos(List<Member> members);
+
+    @Mapping(source = "id", target = "memberId")
+    @Mapping(source = "displayName", target = "name")
+    @Mapping(target = "owedCents", expression = "java(-member.getBalanceCents())")
+    @Mapping(source = "active", target = "active")
+    DebtorDto toDebtorDto(Member member);
+
+    List<DebtorDto> toDebtorDtos(List<Member> members);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(source = "email", target = "email")

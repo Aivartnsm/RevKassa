@@ -13,13 +13,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("select p from Product p where p.active = true order by p.sortOrder, p.name, p.id")
     List<Product> findActiveProducts();
 
+    // Products for sale at or below their warning level, negative (count them!) first; hidden products are not sold
+    @Query("select p from Product p where p.active = true and p.stockQty <= p.lowStockThreshold "
+            + "order by p.stockQty, lower(p.name), p.id")
+    List<Product> findStockToCheck();
+
     @Query("select p from Product p order by p.sortOrder, p.name, p.id")
     List<Product> findAllProducts();
 
     // One statement, so parallel sales and deliveries cannot overwrite each other; does not change the version
     @Modifying(flushAutomatically = true)
     @Query("update Product p set p.stockQty = p.stockQty + :quantityDelta where p.id = :productId")
-    int addToStock(Long productId, int quantityDelta);
+    void addToStock(Long productId, int quantityDelta);
 
     // Row locks in id order: a sale waits until the stocktake has compared and written; one order avoids deadlocks
     @Lock(LockModeType.PESSIMISTIC_WRITE)

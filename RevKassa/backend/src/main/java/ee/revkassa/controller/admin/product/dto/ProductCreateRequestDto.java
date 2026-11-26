@@ -31,6 +31,10 @@ public class ProductCreateRequestDto implements Serializable {
     @Positive
     private Long priceCents;
 
+    // Purchase price for the margin in the sales report; optional, admin only
+    @PositiveOrZero
+    private Long costCents;
+
     @NotNull
     @PositiveOrZero
     @Max(10_000)

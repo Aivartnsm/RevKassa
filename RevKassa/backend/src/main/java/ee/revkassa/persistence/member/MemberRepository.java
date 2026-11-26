@@ -1,6 +1,7 @@
 package ee.revkassa.persistence.member;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -38,7 +39,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query("select m from Member m where m.role = ee.revkassa.persistence.member.MemberRoleEnum.ADMIN and m.active = true order by m.id")
     List<Member> findActiveAdminsForUpdate();
 
-    @Query("select m from Member m order by lower(m.displayName), m.id")
+    @Query("select m from Member m join fetch m.level order by lower(m.displayName), m.id")
     List<Member> findAllMembers();
 
     // Row lock: one member's purchases run one after another (same request twice cannot both pass the check).
@@ -50,7 +51,15 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // One statement, so parallel purchases and payments cannot overwrite each other; does not change the version
     @Modifying(flushAutomatically = true)
     @Query("update Member m set m.balanceCents = m.balanceCents + :amountCents where m.id = :memberId")
-    int addToBalance(Long memberId, long amountCents);
+    void addToBalance(Long memberId, long amountCents);
+
+    // Also inactive members: a former member's debt is still owed
+    @Query("select new ee.revkassa.persistence.member.DebtTotal(count(m), -sum(m.balanceCents)) "
+            + "from Member m where m.balanceCents < 0")
+    DebtTotal findDebtTotal();
+
+    @Query("select m from Member m where m.balanceCents < 0 order by m.balanceCents, m.id")
+    List<Member> findLargestDebtors(Pageable pageable);
 
     @Query("select m.balanceCents from Member m where m.id = :memberId")
     long findBalanceCents(Long memberId);

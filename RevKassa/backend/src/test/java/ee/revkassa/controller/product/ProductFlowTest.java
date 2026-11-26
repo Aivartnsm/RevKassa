@@ -183,6 +183,60 @@ class ProductFlowTest {
     // ---- update ----
 
     @Test
+    void create_withPurchasePrice_savesItForTheAdminOnly() throws Exception {
+        String body = create(adminSession, """
+                {"name":"Ostuhinnaga","priceCents":450,"costCents":240,"lowStockThreshold":6,"sortOrder":7,"active":true}""")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.costCents").value(240))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(productRepository.findById(idOf(body)).orElseThrow().getCostCents()).isEqualTo(240);
+    }
+
+    @Test
+    void create_withoutPurchasePrice_leavesItUnset() throws Exception {
+        create(adminSession, VALID_PRODUCT)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.costCents").doesNotExist());
+    }
+
+    @Test
+    void create_negativePurchasePrice_returns400() throws Exception {
+        create(adminSession, """
+                {"name":"Vale","priceCents":450,"costCents":-1,"lowStockThreshold":6,"sortOrder":7,"active":true}""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.costCents").exists());
+    }
+
+    @Test
+    void update_changesPurchasePrice() throws Exception {
+        Product product = testData.product("Ostuhinna muutus", 250, 5, true);
+        product.setCostCents(110L);
+        entityManager.flush();
+
+        update(product.getId(), """
+                {"name":"Ostuhinna muutus","priceCents":250,"costCents":125,"lowStockThreshold":6,"sortOrder":5,
+                 "active":true,"version":%d}""".formatted(product.getVersion()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.costCents").value(125));
+
+        assertThat(productRepository.findById(product.getId()).orElseThrow().getCostCents()).isEqualTo(125);
+    }
+
+    @Test
+    void memberList_neverShowsThePurchasePrice() throws Exception {
+        Product product = testData.product("Saladus", 300, 901, true);
+        product.setCostCents(140L);
+        entityManager.flush();
+
+        String body = mockMvc.perform(get("/api/products").session(testSessions.memberSession()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(body).doesNotContain("costCents").doesNotContain("140");
+    }
+
+    @Test
     void update_changesFieldsAndReturnsNewVersion() throws Exception {
         Product product = testData.product("Saku Test", 250, 5, true);
         product.setStockQty(24);

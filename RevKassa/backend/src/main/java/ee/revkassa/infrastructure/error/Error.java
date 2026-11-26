@@ -36,6 +36,14 @@ public enum Error {
     PAYMENT_ALREADY_DECIDED("This payment has already been confirmed or rejected.", 132),
     EMAIL_TAKEN("This email is already used by another member.", 133),
     LAST_ADMIN("At least one active admin must remain.", 134),
+    LEVEL_NAME_TAKEN("A membership level with this name already exists.", 135),
+    LEVEL_IN_USE("This membership level is in use and cannot be deleted. Deactivate it instead.", 136),
+    LAST_ACTIVE_LEVEL("At least one membership level must stay active.", 137),
+    LEVEL_NOT_ACTIVE("This membership level is not active.", 138),
+    FEE_MONTH_PASSED("Fees can only be set from the current month on.", 139),
+    FEE_MONTH_ALREADY_CHARGED("This month's fee has already been charged for this level.", 140),
+    FEE_ALREADY_WAIVED("This fee has already been waived.", 141),
+    DATE_RANGE_INVALID("The start date must not be after the end date.", 142),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

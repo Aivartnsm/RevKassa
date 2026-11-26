@@ -32,6 +32,7 @@ public class AdjustmentCreateRequestDto implements Serializable {
 
     // Reported as field "amountCentsNotZero" in ApiError.fieldErrors
     @AssertTrue(message = "must not be 0")
+    @SuppressWarnings("unused") // called by Bean Validation
     private boolean isAmountCentsNotZero() {
         return amountCents == null || amountCents != 0;
     }

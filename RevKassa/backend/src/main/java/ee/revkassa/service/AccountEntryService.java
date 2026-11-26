@@ -14,7 +14,9 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -31,6 +33,8 @@ public class AccountEntryService {
 
     private static final String LINE_SEPARATOR = ", ";
     private static final String NOTE_SEPARATOR = " · ";
+    // "oktoober 2026"
+    private static final DateTimeFormatter MONTH_FORMAT = DateTimeFormatter.ofPattern("LLLL yyyy", Locale.forLanguageTag("et"));
     private static final String REVERSED_PURCHASE = "Tagasivõetud ost: ";
     private static final String PAYMENT = "Makse";
     private static final String ADJUSTMENT = "Parandus";
@@ -85,11 +89,15 @@ public class AccountEntryService {
             case PURCHASE_REVERSAL -> REVERSED_PURCHASE + purchaseDescriptions.get(entry.getPurchase().getId());
             case PAYMENT -> PAYMENT + NOTE_SEPARATOR + entry.getPayment().getMethod().getDescription();
             case ADJUSTMENT -> withNote(ADJUSTMENT, entry.getNote());
-            case MEMBERSHIP_FEE -> MEMBERSHIP_FEE;
-            case MEMBERSHIP_FEE_WAIVER -> withNote(MEMBERSHIP_FEE_WAIVER, entry.getNote());
+            case MEMBERSHIP_FEE -> MEMBERSHIP_FEE + NOTE_SEPARATOR + monthOf(entry);
+            case MEMBERSHIP_FEE_WAIVER -> withNote(MEMBERSHIP_FEE_WAIVER + NOTE_SEPARATOR + monthOf(entry), entry.getNote());
             case EVENT_FEE -> EVENT_FEE;
             case EVENT_FEE_REVERSAL -> EVENT_FEE_REVERSAL;
         };
+    }
+
+    private static String monthOf(AccountEntry entry) {
+        return MONTH_FORMAT.format(entry.getMembershipCharge().getMonth());
     }
 
     private static String withNote(String text, String note) {

@@ -31,6 +31,10 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findDecidedPayments(PaymentStatusEnum status, Pageable pageable);
 
     // Only the payer's id, so the payer's row can be locked before the payment itself is read
+    @Query("select new ee.revkassa.persistence.payment.PaymentTotal(count(p), sum(p.amountCents)) "
+            + "from Payment p where p.status = ee.revkassa.persistence.payment.PaymentStatusEnum.PENDING")
+    PaymentTotal findPendingTotal();
+
     @Query("select p.member.id from Payment p where p.id = :paymentId")
     Optional<Long> findMemberId(Long paymentId);
 

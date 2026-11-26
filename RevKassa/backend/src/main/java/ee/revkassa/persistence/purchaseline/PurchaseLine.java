@@ -36,4 +36,8 @@ public class PurchaseLine {
     @Column(name = "unit_price_cents", nullable = false)
     private Long unitPriceCents;
 
+    // The product's purchase price at the moment of sale; null = not set then (the report uses the current one)
+    @Column(name = "unit_cost_cents")
+    private Long unitCostCents;
+
 }

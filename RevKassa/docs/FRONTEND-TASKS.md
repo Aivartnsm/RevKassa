@@ -111,8 +111,8 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F07 · Tooted** (M) — vajab B07
   Nimekiri hinna, laoseisu, staatusesildi (OK / Vähe / Loe üle / Peidetud) ja näita/peida
-  lülitiga; loomise/muutmise vorm (nimi, stiil, maht, hind eurodes, madala laoseisu piir,
-  järjekord). Laual tabel, telefonis nimekiri → detail. Muutmisel saada tagasi laaditud `version`;
+  lülitiga; loomise/muutmise vorm (nimi, stiil, maht, hind eurodes, ostuhind eurodes (valikuline, `costCents`,
+  ainult admin), madala laoseisu piir, järjekord). Laual tabel, telefonis nimekiri → detail. Muutmisel saada tagasi laaditud `version`;
   409 (`105`) → "Keegi muutis seda toodet vahepeal, laadi uuesti". Laoseisu siin ei muudeta (tarne/inventuur).
 
 - [ ] **F08 · Tarne sisestamine** (S) — vajab B08
@@ -198,18 +198,30 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 
 - [ ] **F17 · Ülevaade** (S) — vajab B18
   Neli näitajat (avatud võlad, kinnitamiseks, vähe laos, loe üle), mis viivad oma vaadetesse;
-  nimekirjad "Kontrolli laoseisu" ja "Suurimad võlad".
+  nimekirjad "Kontrolli laoseisu" ja "Suurimad võlad"; kaart "Enim ostetud sel kuul" (top 5, viib
+  müügiaruandesse). `status` LOW → "Vähe", NEGATIVE → "Vajab inventuuri"; `active = false` võlgnikul →
+  märk "endine liige". Summad tulevad positiivsete sentidena (`owedCents`).
 
 - [ ] **F18 · Müügiaruanne** (S) — vajab B19
-  Kuude vahemiku valik ja tabel kogustest ja tulust toote kaupa.
+  Kuupäevade vahemik "Alates" / "Kuni" ja kiirvalikud: Täna, Eile, See kuu, Eelmine kuu, Aasta algusest,
+  Kõik (vaikimisi "See kuu"); kiirvalik täidab kuupäevad, mida saab seejärel muuta. Tabel toote kaupa
+  (müüdud tk, tulu), enim müüdud ees, all kokku. Ülevaate kaart "Enim ostetud sel kuul" viib siia.
+  Veerud: Toode · Kuude kaupa (tk) (`months`, nt "okt 34 · nov 28") · Kokku (tk) · Tulu · Ostuhind · Marginaal (€ ja
+  % = `marginCents / revenueCents`). Puuduv `costCents` → "—" ja vihje "Ostuhind määramata" (viib toote vormi);
+  `unitsWithoutCost > 0` kokkuvõttes → "n tk ilma ostuhinnata, marginaalist välja jäetud". Müümata tooted
+  (0 tk) all hallilt. "Kõik" saadab päringu ilma kuupäevadeta. Kood 142 → "Alguskuupäev on pärast lõppkuupäeva".
 
 ## Verstapost 6 — Tasud ja arved
 
 - [ ] **F20 · Admin: liikmemaksud** (S) — vajab B22, B24
   Praegune tasu taseme kaupa ja ajalugu; "Muuda tasusid" (summa eurodes taseme kohta, alates
-  kuust, vaikimisi järgmine kuu).
+  kuust, vaikimisi järgmine kuu). Eurod sisestatakse komaga (nt 23,40) ja saadetakse sentides.
+  `upcoming` → "Alates <kuu>: <summa>". Koodid: 139 → "Möödunud kuu tasusid ei saa muuta";
+  140 → "Selle kuu tasu on sellelt tasemelt juba võetud, vali järgmine kuu".
   Kuu valik → tasude nimekiri (liige, summa, Võetud/Tühistatud) kokkuvõtetega; Tühista
   kohustusliku märkusega. Menüüpunkt "Tasud".
+  Märkuse välja juures vihje "Liige näeb põhjust oma saldo ajaloos". Tühistamine on lõplik (kinnitusdialoog).
+  Kood 141 → "Tasu on juba tühistatud", laadi nimekiri uuesti.
 
 - [ ] **F21 · Admin: arvete saatmine** (M) — vajab B26
   Võlglased: nimi, võlg, e-post, viimane arve. Linnukesed, eelvalitud = 7 päeva jooksul
@@ -223,6 +235,9 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
 - [ ] **F22 · Liikmetasemed** (S) — vajab B27
   Liikmete vaates paneel "Liikmetasemed" (ümbernimetamine, järjestamine, lisamine,
   mahavõtmine; liikmete arv taseme kohta); taseme valik liikme lisamisel/muutmisel ja veerg "Tase".
+  "Kustuta" ainult siis, kui `deletable`. Taseme valikus ainult aktiivsed tasemed + liikme praegune.
+  Koodid: 135 → "Selle nimega tase on juba olemas"; 136 → "Tase on kasutusel, võta see kasutusest maha";
+  137 → "Vähemalt üks tase peab jääma aktiivseks"; 138 → "See tase on kasutusest maha võetud".
 
 - [ ] **F23 · Ürituste nimekiri ja redaktor** (M) — vajab B28
   Menüüpunkt "Üritused": kaardid (nimi, kuupäev, staatus, osalejad, tasudest laekuv, eelarve

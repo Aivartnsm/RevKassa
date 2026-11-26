@@ -4,6 +4,7 @@ import ee.revkassa.persistence.member.MemberRoleEnum;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -11,6 +12,7 @@ import java.io.Serializable;
 
 /**
  * A new member is always active (the invite goes out at once). No password: the member sets it with the invite link.
+ * levelId may be left out: then the member gets the first active level.
  */
 @Data
 public class MemberCreateRequestDto implements Serializable {
@@ -32,4 +34,7 @@ public class MemberCreateRequestDto implements Serializable {
 
     @NotNull
     private Boolean feeExempt;
+
+    @Positive
+    private Long levelId;
 }

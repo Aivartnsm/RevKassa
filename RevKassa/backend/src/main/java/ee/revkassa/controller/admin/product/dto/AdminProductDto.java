@@ -15,6 +15,7 @@ public class AdminProductDto implements Serializable {
     private String style;
     private Integer volumeMl;
     private Long priceCents;
+    private Long costCents;
     private Integer stockQty;
     private Integer lowStockThreshold;
     private Integer sortOrder;

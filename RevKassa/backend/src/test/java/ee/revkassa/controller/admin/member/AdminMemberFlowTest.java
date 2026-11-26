@@ -7,6 +7,7 @@ import ee.revkassa.persistence.accountentry.AccountEntry;
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.member.MemberRoleEnum;
+import ee.revkassa.persistence.membershiplevel.MembershipLevel;
 import ee.revkassa.persistence.membershiplevel.MembershipLevelRepository;
 import ee.revkassa.persistence.passwordtoken.PasswordToken;
 import ee.revkassa.persistence.passwordtoken.PasswordTokenPurposeEnum;
@@ -113,6 +114,8 @@ class AdminMemberFlowTest {
                 .andExpect(jsonPath(memberPath(member) + ".active").value(true))
                 .andExpect(jsonPath(memberPath(member) + ".balanceCents").value(0))
                 .andExpect(jsonPath(memberPath(member) + ".passwordSet").value(true))
+                .andExpect(jsonPath(memberPath(member) + ".levelId").value(Math.toIntExact(member.getLevel().getId())))
+                .andExpect(jsonPath(memberPath(member) + ".levelName").value(member.getLevel().getName()))
                 .andExpect(jsonPath(memberPath(withoutPassword) + ".passwordSet").value(false));
     }
 
@@ -157,7 +160,44 @@ class AdminMemberFlowTest {
         String pin = JsonPath.read(json, "$.pin");
         assertThat(created.getPinHmac()).isEqualTo(pinService.hash(pin)).doesNotContain(pin);
         assertThat(created.getPasswordHash()).isNull();
-        assertThat(created.getLevel().getId()).isEqualTo(membershipLevelRepository.findAllActive().getFirst().getId());
+        assertThat(created.getLevel().getId()).isEqualTo(firstActiveLevel().getId());
+    }
+
+    @Test
+    void create_withLevel_assignsThatLevel() throws Exception {
+        MembershipLevel junior = level("Noorem", true);
+
+        String json = sendJson(post("/api/admin/members"), adminSession,
+                        "{\"displayName\":\"Tasemega\",\"email\":\"" + newEmail + "\",\"role\":\"MEMBER\",\"feeExempt\":false,"
+                                + "\"levelId\":" + junior.getId() + "}")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.member.levelId").value(Math.toIntExact(junior.getId())))
+                .andExpect(jsonPath("$.member.levelName").value(junior.getName()))
+                .andReturn().getResponse().getContentAsString();
+
+        assertThat(entityManager.find(Member.class, idOf(json, "$.member.memberId")).getLevel().getId())
+                .isEqualTo(junior.getId());
+    }
+
+    @Test
+    void create_withInactiveLevel_returns403AndSendsNothing() throws Exception {
+        MembershipLevel retired = level("Mahavõetud", false);
+
+        sendJson(post("/api/admin/members"), adminSession,
+                "{\"displayName\":\"Nimi\",\"email\":\"" + newEmail + "\",\"role\":\"MEMBER\",\"feeExempt\":false,"
+                        + "\"levelId\":" + retired.getId() + "}")
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(138));
+
+        assertThat(fakeMailer.sent()).isEmpty();
+    }
+
+    @Test
+    void create_withUnknownLevel_returns404() throws Exception {
+        sendJson(post("/api/admin/members"), adminSession,
+                "{\"displayName\":\"Nimi\",\"email\":\"" + newEmail + "\",\"role\":\"MEMBER\",\"feeExempt\":false,"
+                        + "\"levelId\":" + Long.MAX_VALUE + "}")
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -251,6 +291,47 @@ class AdminMemberFlowTest {
         Member saved = entityManager.find(Member.class, member.getId());
         assertThat(saved.getDisplayName()).isEqualTo("Uus Nimi");
         assertThat(saved.getFeeExempt()).isTrue();
+    }
+
+    @Test
+    void update_changesLevel() throws Exception {
+        MembershipLevel junior = level("Noorem", true);
+
+        update(member.getId(), "Nimi", member.getEmail(), "MEMBER", true, false, versionOf(member), junior.getId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.levelId").value(Math.toIntExact(junior.getId())))
+                .andExpect(jsonPath("$.levelName").value(junior.getName()));
+
+        assertThat(entityManager.find(Member.class, member.getId()).getLevel().getId()).isEqualTo(junior.getId());
+    }
+
+    @Test
+    void update_toInactiveLevel_returns403() throws Exception {
+        MembershipLevel retired = level("Mahavõetud", false);
+
+        update(member.getId(), "Nimi", member.getEmail(), "MEMBER", true, false, versionOf(member), retired.getId())
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errorCode").value(138));
+    }
+
+    @Test
+    void update_memberOnDeactivatedLevel_canStillBeEditedAndKeepsIt() throws Exception {
+        MembershipLevel retired = level("Mahavõetud", false);
+        entityManager.find(Member.class, member.getId()).setLevel(entityManager.find(MembershipLevel.class, retired.getId()));
+        forget();
+
+        update(member.getId(), "Uus Nimi", member.getEmail(), "MEMBER", true, false, versionOf(member), retired.getId())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.levelId").value(Math.toIntExact(retired.getId())));
+    }
+
+    @Test
+    void update_withoutLevel_returns400() throws Exception {
+        sendJson(put("/api/admin/members/" + member.getId()), adminSession,
+                "{\"displayName\":\"Nimi\",\"email\":\"" + member.getEmail() + "\",\"role\":\"MEMBER\",\"active\":true,"
+                        + "\"feeExempt\":false,\"version\":" + versionOf(member) + "}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.levelId").exists());
     }
 
     @Test
@@ -368,7 +449,8 @@ class AdminMemberFlowTest {
     @Test
     void update_withoutVersion_returns400() throws Exception {
         sendJson(put("/api/admin/members/" + member.getId()), adminSession,
-                "{\"displayName\":\"Nimi\",\"email\":\"" + newEmail + "\",\"role\":\"MEMBER\",\"active\":true,\"feeExempt\":false}")
+                "{\"displayName\":\"Nimi\",\"email\":\"" + newEmail + "\",\"role\":\"MEMBER\",\"active\":true,\"feeExempt\":false,"
+                        + "\"levelId\":" + member.getLevel().getId() + "}")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.fieldErrors.version").exists());
     }
@@ -584,11 +666,35 @@ class AdminMemberFlowTest {
                 + "\",\"feeExempt\":" + feeExempt + "}";
     }
 
+    // Keeps the member's current level
     private ResultActions update(Long memberId, String displayName, String email, String role, boolean active,
                                  boolean feeExempt, long version) throws Exception {
+        Member current = entityManager.find(Member.class, memberId);
+        Long levelId = current != null ? current.getLevel().getId() : firstActiveLevel().getId();
+        return update(memberId, displayName, email, role, active, feeExempt, version, levelId);
+    }
+
+    private ResultActions update(Long memberId, String displayName, String email, String role, boolean active,
+                                 boolean feeExempt, long version, Long levelId) throws Exception {
         return sendJson(put("/api/admin/members/" + memberId), adminSession,
                 "{\"displayName\":\"" + displayName + "\",\"email\":\"" + email + "\",\"role\":\"" + role
-                        + "\",\"active\":" + active + ",\"feeExempt\":" + feeExempt + ",\"version\":" + version + "}");
+                        + "\",\"active\":" + active + ",\"feeExempt\":" + feeExempt + ",\"version\":" + version
+                        + ",\"levelId\":" + levelId + "}");
+    }
+
+    private MembershipLevel firstActiveLevel() {
+        return membershipLevelRepository.findAllActive().getFirst();
+    }
+
+    private MembershipLevel level(String name, boolean active) {
+        MembershipLevel level = new MembershipLevel();
+        level.setName(name + " " + UUID.randomUUID());
+        level.setSortOrder(100);
+        level.setActive(active);
+        level.setCreatedAt(OffsetDateTime.now());
+        entityManager.persist(level);
+        forget();
+        return level;
     }
 
     private ResultActions adjust(Long memberId, String body) throws Exception {

@@ -3,6 +3,7 @@ package ee.revkassa.service;
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum.AccountEntryLinkEnum;
 import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.membershipcharge.MembershipCharge;
 import ee.revkassa.persistence.payment.Payment;
 import ee.revkassa.persistence.purchase.Purchase;
 
@@ -13,12 +14,12 @@ import java.util.Objects;
  * One balance change to post with AccountService.post. Only valid combinations can be built: the type fixes the sign
  * of the amount, which link must be present (and that no other is) and whether a note is required. Breaking a rule is
  * a programming error (IllegalArgumentException), not a user error: callers validate user input first.
- * Create it with the method for the type; each task adds its own (membership fee in B22, ...).
+ * Create it with the method for the type; each task adds its own (fee waiver in B24, event fees in B28, ...).
  *
  * @param createdBy the member or admin who caused it; null only when the app itself posts (monthly fee job)
  */
 public record AccountPosting(Member member, AccountEntryTypeEnum type, long amountCents, Purchase purchase,
-                             Payment payment, Long membershipChargeId, Long eventParticipantId, String note,
+                             Payment payment, MembershipCharge membershipCharge, Long eventParticipantId, String note,
                              Member createdBy) {
 
     public AccountPosting {
@@ -30,7 +31,7 @@ public record AccountPosting(Member member, AccountEntryTypeEnum type, long amou
         validateLinks(type, Map.of(
                 AccountEntryLinkEnum.PURCHASE, purchase != null,
                 AccountEntryLinkEnum.PAYMENT, payment != null,
-                AccountEntryLinkEnum.MEMBERSHIP_CHARGE, membershipChargeId != null,
+                AccountEntryLinkEnum.MEMBERSHIP_CHARGE, membershipCharge != null,
                 AccountEntryLinkEnum.EVENT_PARTICIPANT, eventParticipantId != null));
         note = note == null || note.isBlank() ? null : note.strip();
         if (type.isNoteRequired() && note == null) {
@@ -66,6 +67,22 @@ public record AccountPosting(Member member, AccountEntryTypeEnum type, long amou
      */
     public static AccountPosting adjustment(Member member, long amountCents, String note, Member admin) {
         return new AccountPosting(member, AccountEntryTypeEnum.ADJUSTMENT, amountCents, null, null, null, null, note, admin);
+    }
+
+    /**
+     * This month's fee, charged by the app itself (no createdBy): the balance goes down by the charged amount.
+     */
+    public static AccountPosting membershipFee(MembershipCharge charge) {
+        return new AccountPosting(charge.getMember(), AccountEntryTypeEnum.MEMBERSHIP_FEE, -charge.getAmountCents(),
+                null, null, charge, null, null, null);
+    }
+
+    /**
+     * An admin cancels a charged fee: the whole charged amount back. The note says why and is shown to the member.
+     */
+    public static AccountPosting membershipFeeWaiver(MembershipCharge charge, String note, Member admin) {
+        return new AccountPosting(charge.getMember(), AccountEntryTypeEnum.MEMBERSHIP_FEE_WAIVER, charge.getAmountCents(),
+                null, null, charge, null, note, admin);
     }
 
     // Exactly the link the type needs, no other

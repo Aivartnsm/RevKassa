@@ -1,6 +1,7 @@
 package ee.revkassa.persistence.accountentry;
 
 import ee.revkassa.persistence.member.Member;
+import ee.revkassa.persistence.membershipcharge.MembershipCharge;
 import ee.revkassa.persistence.payment.Payment;
 import ee.revkassa.persistence.purchase.Purchase;
 import jakarta.persistence.*;
@@ -48,8 +49,9 @@ public class AccountEntry {
     @JoinColumn(name = "payment_id")
     private Payment payment;
 
-    @Column(name = "membership_charge_id")
-    private Long membershipChargeId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "membership_charge_id")
+    private MembershipCharge membershipCharge;
 
     @Column(name = "event_participant_id")
     private Long eventParticipantId;

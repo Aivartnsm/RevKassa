@@ -150,6 +150,24 @@ class PurchaseFlowTest {
     }
 
     @Test
+    void purchase_storesThePurchasePriceOfTheMoment_laterChangeKeepsOldLines() throws Exception {
+        setCost(lager, 110L);
+        buy(memberSession, UUID.randomUUID(), 250, line(lager, 1));
+        setCost(lager, 150L);
+        buy(memberSession, UUID.randomUUID(), 250, line(lager, 1));
+
+        assertThat(purchasesOf(member)).extracting(purchase -> linesOf(purchase).getFirst().getUnitCostCents())
+                .containsExactlyInAnyOrder(110L, 150L);
+    }
+
+    @Test
+    void purchase_productWithoutPurchasePrice_storesNone() throws Exception {
+        buy(memberSession, UUID.randomUUID(), 400, line(stout, 1));
+
+        assertThat(linesOf(onlyPurchaseOf(member)).getFirst().getUnitCostCents()).isNull();
+    }
+
+    @Test
     void laterPriceChange_doesNotChangeRecordedPurchase() throws Exception {
         buy(memberSession, UUID.randomUUID(), 500, line(lager, 2));
         changePrice(lager, 300);
@@ -328,6 +346,12 @@ class PurchaseFlowTest {
 
     private static String line(Product product, int quantity) {
         return "{\"productId\":" + product.getId() + ",\"quantity\":" + quantity + "}";
+    }
+
+    private void setCost(Product product, Long costCents) {
+        entityManager.find(Product.class, product.getId()).setCostCents(costCents);
+        entityManager.flush();
+        entityManager.clear();
     }
 
     private void changePrice(Product product, long priceCents) throws Exception {
