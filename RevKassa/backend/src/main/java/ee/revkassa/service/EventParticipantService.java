@@ -6,13 +6,11 @@ import ee.revkassa.controller.admin.event.dto.ParticipantsAddRequestDto;
 import ee.revkassa.controller.admin.event.dto.ParticipantsAddResponseDto;
 import ee.revkassa.controller.admin.event.dto.SkippedMemberDto;
 import ee.revkassa.controller.admin.event.dto.SkippedMemberDto.SkipReasonEnum;
-import ee.revkassa.infrastructure.config.ClockConfig;
 import ee.revkassa.infrastructure.error.Error;
 import ee.revkassa.infrastructure.exception.ForbiddenException;
 import ee.revkassa.infrastructure.exception.PrimaryKeyNotFoundException;
 import ee.revkassa.persistence.event.Event;
 import ee.revkassa.persistence.event.EventStatusEnum;
-import ee.revkassa.persistence.eventlevelfee.EventLevelFee;
 import ee.revkassa.persistence.eventlevelfee.EventLevelFeeRepository;
 import ee.revkassa.persistence.eventparticipant.EventParticipant;
 import ee.revkassa.persistence.eventparticipant.EventParticipantRepository;
@@ -25,12 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -39,7 +35,8 @@ import java.util.stream.Collectors;
  * the join day (Tallinn date); the balance does not change until an admin charges the fees. Charging, a fee change
  * after charging, removing and cancelling write EVENT_FEE / EVENT_FEE_REVERSAL rows through AccountService, so a
  * participant's rows always sum to -feeCents when active and charged, otherwise to 0.
- * Every change locks the event row first, so changes to one event (and its status) run one after another.
+ * Every change locks the event row first, so changes to one event (and its status) run one after another. Price
+ * periods: EventFeeTable.
  */
 @Slf4j
 @Service
@@ -66,7 +63,7 @@ public class EventParticipantService {
         Map<Long, EventParticipant> existing = eventParticipantRepository.findByMembers(eventId, memberIds).stream()
                 .collect(Collectors.toMap(participant -> participant.getMember().getId(), Function.identity()));
         OffsetDateTime now = now();
-        List<EventLevelFee> fees = eventLevelFeeRepository.findEventFees(eventId);
+        EventFeeTable fees = EventFeeTable.of(eventLevelFeeRepository.findEventFees(eventId));
         Member admin = memberRepository.getReferenceById(adminId);
         List<SkippedMemberDto> skipped = new ArrayList<>();
         for (Long memberId : memberIds) {
@@ -77,7 +74,7 @@ public class EventParticipantService {
                 skipped.add(new SkippedMemberDto(memberId, reason));
                 continue;
             }
-            join(event, member, participant, feeOf(member, fees, now), admin, now);
+            join(event, member, participant, fees.feeOn(EventFeeTable.dayOf(now), member.getLevel().getId()), admin, now);
         }
         log.info("Event participants added: eventId={}, added={}, skipped={}, adminId={}",
                 eventId, memberIds.size() - skipped.size(), skipped.size(), adminId);
@@ -180,37 +177,17 @@ public class EventParticipantService {
     }
 
     /**
-     * The member's level's amount in the price period holding the join day: the latest period starting on that day or
-     * before (the one from the start has no date). A level without a row in that period pays 0.
+     * Also used when a member signs up themselves (MemberEventService): then addedBy is the member. A removed member's
+     * row becomes active again, as if they joined now. The balance does not change.
      */
-    private static long feeOf(Member member, List<EventLevelFee> fees, OffsetDateTime joinedAt) {
-        LocalDate joinDay = joinedAt.atZoneSameInstant(ClockConfig.APP_ZONE).toLocalDate();
-        List<EventLevelFee> started = fees.stream()
-                .filter(fee -> fee.getValidFrom() == null || !fee.getValidFrom().isAfter(joinDay))
-                .toList();
-        LocalDate periodStart = started.stream()
-                .map(EventLevelFee::getValidFrom)
-                .filter(Objects::nonNull)
-                .max(LocalDate::compareTo)
-                .orElse(null);
-        return started.stream()
-                .filter(fee -> Objects.equals(fee.getValidFrom(), periodStart))
-                .filter(fee -> fee.getLevel().getId().equals(member.getLevel().getId()))
-                .mapToLong(EventLevelFee::getAmountCents)
-                .findFirst()
-                .orElse(0);
-    }
-
-    // A removed member's row becomes active again, as if they joined now
-    private void join(Event event, Member member, EventParticipant removed, long feeCents, Member admin,
-                      OffsetDateTime now) {
+    void join(Event event, Member member, EventParticipant removed, long feeCents, Member addedBy, OffsetDateTime now) {
         EventParticipant participant = removed == null ? new EventParticipant() : removed;
         participant.setEvent(event);
         participant.setMember(member);
         participant.setLevel(member.getLevel());
         participant.setFeeCents(feeCents);
         participant.setStatus(EventParticipantStatusEnum.ACTIVE);
-        participant.setAddedBy(admin);
+        participant.setAddedBy(addedBy);
         participant.setAddedAt(now);
         participant.setRemovedAt(null);
         participant.setChargedAt(null);

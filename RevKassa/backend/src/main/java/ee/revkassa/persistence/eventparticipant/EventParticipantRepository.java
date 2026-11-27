@@ -25,6 +25,10 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
     @Query("select p from EventParticipant p where p.event.id = :eventId and p.member.id in :memberIds")
     List<EventParticipant> findByMembers(Long eventId, Collection<Long> memberIds);
 
+    // One member's rows (active or removed) on the given events
+    @Query("select p from EventParticipant p where p.member.id = :memberId and p.event.id in :eventIds")
+    List<EventParticipant> findMemberParticipations(Long memberId, Collection<Long> eventIds);
+
     @Query("select p from EventParticipant p join fetch p.member where p.event.id = :eventId and p.member.id = :memberId")
     Optional<EventParticipant> findByMember(Long eventId, Long memberId);
 

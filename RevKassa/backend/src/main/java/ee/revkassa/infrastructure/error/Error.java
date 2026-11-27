@@ -54,6 +54,9 @@ public enum Error {
     EVENT_NOT_PUBLISHED("This event is not published.", 150),
     EVENT_HAS_PARTICIPANTS("This event has participants and cannot be unpublished.", 151),
     PARTICIPANT_NOT_ACTIVE("This member has already been removed from the event.", 152),
+    SIGNUP_CLOSED("Sign-up for this event is closed.", 153),
+    ALREADY_SIGNED_UP("You are already signed up for this event.", 154),
+    SIGNUP_NEEDS_PASSWORD("Sign up after logging in with your email and password.", 155),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

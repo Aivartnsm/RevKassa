@@ -262,7 +262,9 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   avaldatud eelseisvad üritused kuupäeva, koha, kirjelduse ja oma tasuga (ning "alates 01.12 25 €", kui hind
   tõuseb); "Registreeru" (kui registreerimine on avatud) → kinnitusleht "Tasu X lisatakse sinu saldole, kui
   admin tasud võtab" → "Oled kirjas". Registreeritud üritustel "Oled kirjas" ja "Loobumiseks võta ühendust
-  adminiga" (tühistamise nuppu pole).
+  adminiga" (tühistamise nuppu pole). PIN-sessioonis (baaritahvel) "Registreeru" asemel vihje "Registreerumiseks
+  logi oma seadmes sisse e-posti ja parooliga" (backend vastaks 155). Vead: 153 → "Registreerimine on suletud",
+  154 → "Oled juba kirjas", 155 → sama vihje.
 
 - [ ] **F28 · Üritused telefonis (admin)** (S) — koos F23–F25
   Admini ürituste vaated töötavad 390px juures: nimekiri → detail segmentidega Osalejad ·

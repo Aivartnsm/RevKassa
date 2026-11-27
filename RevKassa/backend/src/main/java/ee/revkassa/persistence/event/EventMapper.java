@@ -5,6 +5,7 @@ import ee.revkassa.controller.admin.event.dto.EventCreateRequestDto;
 import ee.revkassa.controller.admin.event.dto.EventDto;
 import ee.revkassa.controller.admin.event.dto.EventSummaryDto;
 import ee.revkassa.controller.admin.event.dto.EventUpdateRequestDto;
+import ee.revkassa.controller.event.dto.MemberEventDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -78,4 +79,18 @@ public interface EventMapper {
     @Mapping(source = "status", target = "status")
     @Mapping(target = "participantCount", ignore = true)
     UpcomingEventDto toUpcomingEventDto(Event event);
+
+    @Mapping(source = "id", target = "eventId")
+    @Mapping(source = "name", target = "name")
+    @Mapping(source = "startsAt", target = "startsAt")
+    @Mapping(source = "location", target = "location")
+    @Mapping(source = "description", target = "description")
+    @Mapping(source = "status", target = "status")
+    @Mapping(source = "signupOpen", target = "signupOpen")
+    @Mapping(target = "participantCount", ignore = true)
+    @Mapping(target = "signedUp", ignore = true)
+    @Mapping(target = "charged", ignore = true)
+    @Mapping(target = "feeCents", ignore = true)
+    @Mapping(target = "nextFee", ignore = true)
+    MemberEventDto toMemberEventDto(Event event);
 }

@@ -14,6 +14,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     String OPEN_STATUSES = "(ee.revkassa.persistence.event.EventStatusEnum.DRAFT, "
             + "ee.revkassa.persistence.event.EventStatusEnum.PUBLISHED)";
+    String ACTIVE_PARTICIPATION = "select p.id from EventParticipant p where p.event = e and p.member.id = :memberId "
+            + "and p.status = ee.revkassa.persistence.eventparticipant.EventParticipantStatusEnum.ACTIVE";
 
     // Open events (draft or published) first, the soonest first; then closed and cancelled ones, the newest first
     @Query("select e from Event e "
@@ -24,6 +26,16 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     @Query("select e from Event e where e.status in " + OPEN_STATUSES + " and e.startsAt >= :from order by e.startsAt, e.id")
     List<Event> findUpcoming(OffsetDateTime from, Pageable pageable);
+
+    // Published events from a moment on, and earlier published ones the member takes part in; soonest first
+    @Query("select e from Event e where e.status = ee.revkassa.persistence.event.EventStatusEnum.PUBLISHED "
+            + "and (e.startsAt >= :from or exists (" + ACTIVE_PARTICIPATION + ")) order by e.startsAt, e.id")
+    List<Event> findPublishedForMember(Long memberId, OffsetDateTime from);
+
+    // Closed events the member took part in, the newest first
+    @Query("select e from Event e where e.status = ee.revkassa.persistence.event.EventStatusEnum.CLOSED "
+            + "and exists (" + ACTIVE_PARTICIPATION + ") order by e.startsAt desc, e.id desc")
+    List<Event> findClosedForMember(Long memberId, Pageable pageable);
 
     @Query("select e from Event e join fetch e.createdBy where e.id = :id")
     Optional<Event> findWithCreator(Long id);

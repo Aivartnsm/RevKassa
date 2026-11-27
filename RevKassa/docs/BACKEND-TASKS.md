@@ -502,13 +502,27 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
     vaikimisi, `AI` B32 jaoks) määratakse ainult loomisel. Kirjeldus 1–200, summad 0–10 000 €, märkus ≤ 500.
   Valmis, kui: puuduvate tegelike summadega kokkuvõtted ja ainult loetavad olekud on testitud.
 
-- [ ] **B33 · Liikme registreerumine** (S) — pärast B29
+- [x] **B33 · Liikme registreerumine** (S) — pärast B29
   `event.signup_open` (admin muudab). `GET /api/events`: eelseisvad `PUBLISHED` üritused ja üritused, kus liige
   osaleb; igaühel `signupOpen`, oma tasu (taseme ja tänase hinnaperioodi järgi; registreerunul tema kopeeritud
   tasu), järgmine hinnatõus (kuupäev + summa, kui on), osalejate arv, `signedUp`, kas tasu on võetud.
   `POST /api/events/{id}/signup`: ainult `PUBLISHED` + avatud (muidu `ForbiddenException`), mitte juba aktiivne
   (`ForbiddenException`); sama service nagu admini lisamisel, `added_by` = liige; saldo ei muutu enne tasude
   võtmist. Liikmel tühistamise endpointi pole.
+  Otsused (eelvaade 2026-11-27):
+  - Nimekiri: `PUBLISHED` üritused alates tänasest (Tallinna kuupäev), `PUBLISHED` möödunud üritused, kus liige on
+    aktiivne osaleja (kuni admin need sulgeb), ning liikme 10 viimast `CLOSED` üritust, kus ta oli aktiivne.
+    `DRAFT` ja `CANCELLED` ei paista kunagi; mustand või tundmatu id signupis → 404 (101).
+  - Kaardil: nimi, algus, koht, kirjeldus, `status`, `signupOpen`, `participantCount`, `signedUp`, `charged`,
+    `feeCents` (registreerumata: taseme summa tänases hinnaperioodis; registreerunul kopeeritud tasu) ja
+    `nextFee {validFrom, feeCents}` — järgmine hinnaperiood, kus tema taseme summa muutub (registreerunul null).
+  - Registreeruda saab ainult **parooliga sessioonis**; PIN-sessioon (baaritahvel) → 403 `SIGNUP_NEEDS_PASSWORD`
+    (155), nimekirja näeb ka PIN-iga.
+  - Registreerimine järgib ainult admini lülitit (ka pärast algusaega): mitte `PUBLISHED` või suletud → 403
+    `SIGNUP_CLOSED` (153); juba aktiivne → 403 `ALREADY_SIGNED_UP` (154).
+  - Admini eemaldatud liige (`REMOVED`) võib ise uuesti registreeruda nagu uus: rida taas `ACTIVE`, tänane tase ja
+    tasu, `charged_at = null`, `added_by` = liige.
+  - Ürituse rida lukustatakse esimesena (nagu B29); vastus on uuendatud kaart.
   Valmis, kui: avatud/suletud/tühistatud, topeltregistreerumine, tasu taseme järgi ja see, et
   liige ei saa end eemaldada (route'i pole; admini DELETE töötab), on testitud.
 

@@ -278,8 +278,8 @@ AI abiline (valikuline)
 | `GET /api/payments/details` | liige | `{recipient, iban, description}` pangaülekande jaoks |
 | `POST /api/payments` | liige | `{amountCents, reference?}` — teata maksest |
 | `GET /api/me/payments?status=PENDING` | liige | oma maksed staatuse järgi (`PENDING` / `CONFIRMED` / `REJECTED`) |
-| `GET /api/events` | liige | avaldatud eelseisvad üritused ja üritused, kus liige osaleb; oma tasu, registreerimise olek ja kas registreerunud |
-| `POST /api/events/{id}/signup` | liige | registreeru; tasu tema taseme ja tänase hinnaperioodi järgi, saldole läheb see tasude võtmisel (tühistamise endpointi pole) |
+| `GET /api/events` | liige | avaldatud üritused alates tänasest, varasemad avaldatud, kus liige osaleb, ja tema 10 viimast suletud üritust; oma tasu, `nextFee`, registreerimise olek, `signedUp`, `charged` |
+| `POST /api/events/{id}/signup` | liige (ainult parooliga sessioon) | registreeru; tasu tema taseme ja tänase hinnaperioodi järgi, saldole läheb see tasude võtmisel (tühistamise endpointi pole) |
 | `GET/POST/PUT /api/admin/products` | admin | toodete ja hindade haldus |
 | `POST /api/admin/stock/deliveries` | admin | tarne sisestamine (toode, kogus, ühiku hind) |
 | `POST /api/admin/stock/stocktake` | admin | loetud kogused → parandused |
