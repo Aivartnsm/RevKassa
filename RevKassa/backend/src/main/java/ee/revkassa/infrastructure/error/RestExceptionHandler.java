@@ -1,5 +1,6 @@
 package ee.revkassa.infrastructure.error;
 
+import ee.revkassa.infrastructure.ai.AssistantUnavailableException;
 import ee.revkassa.infrastructure.exception.BadRequestException;
 import ee.revkassa.infrastructure.exception.ConflictException;
 import ee.revkassa.infrastructure.exception.DataNotFoundException;
@@ -106,6 +107,13 @@ public class RestExceptionHandler {
     @ExceptionHandler(MailSendFailedException.class)
     public ApiError handleMailSendFailedException() {
         return createApiError(Error.EMAIL_NOT_SENT);
+    }
+
+    // The assistant is off or Gemini failed (quota, funds, timeout); nothing was saved, the admin can try again
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    @ExceptionHandler(AssistantUnavailableException.class)
+    public ApiError handleAssistantUnavailableException(AssistantUnavailableException exception) {
+        return createApiError(exception.getError());
     }
 
     // e.g. /api/admin/devices/abc/revoke: a malformed id is the client's mistake, not a server error

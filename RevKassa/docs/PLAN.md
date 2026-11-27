@@ -209,9 +209,10 @@ Liikmetasemed
   eelarveread ei puuduta kunagi saldosid ega laoseisu.
 
 AI abiline (valikuline)
-- Kutsub backendist Anthropic Messages API-t (Anthropic Java SDK), mudel konfiguratsioonist
-  (`revkassa.ai.model`, vaikimisi `claude-sonnet-5-5`). Sees ainult siis, kui
-  `ANTHROPIC_API_KEY` on seatud; muidu peidab UI abilise.
+- Kutsub backendist Google Gemini API-t (Google Gen AI Java SDK), mudel konfiguratsioonist
+  (`revkassa.ai.model`, vaikimisi `gemini-3.5-flash-lite`). Sees ainult siis, kui
+  `GOOGLE_API_KEY` on seatud; muidu peidab UI abilise. Tootmises kasutatakse arveldusega Google Cloudi projekti
+  võtit (tasuline teenus: päringuid ei kasutata Google'i toodete parendamiseks).
 - Ainult adminile, korraga ühe ürituse kohta. Kiirtegevused: "Eelarve mustand", "Kui palju
   osta", "Retsept N inimesele", lisaks vaba küsimus. Vastused on eesti keeles.
 - Päring sisaldab ainult ürituse andmeid: nimi, kuupäev, osalejate arv taseme kaupa, praegused
@@ -240,7 +241,7 @@ AI abiline (valikuline)
   Tootmises tehakse skeemimuudatus käsitsi muudatusskriptiga (`docs/database/muudatused/`).
 - E-post: `spring-boot-starter-mail` (parooli lingid ja arved); igakuine tasutöö kasutab `@Scheduled` (üks instants,
   eraldi ajastamise teeki pole).
-- AI: Anthropic Java SDK (`com.anthropic:anthropic-java`) `EventAssistant` liidese taga;
+- AI: Google Gen AI Java SDK (`com.google.genai:google-genai`) `EventAssistant` liidese taga;
   ilma võtmeta väljalülitatud implementatsioon, testides võlts.
 - Frontend: Vue 3 + Vite kaustas `frontend/`, Options API, Vue Router, axios (`api-services/`).
   Jagatud olek props/emits ja `sessionStorage` abil, Pinia't pole. Arenduses suunab Vite `/api`

@@ -42,7 +42,7 @@ ee/revkassa/
 
 ## Ressursid
 
-`backend/src/main/resources/application.properties` — andmebaas, sessioonid, `revkassa.*` seaded. Saladused (PIN-i võti, SMTP parool, `ANTHROPIC_API_KEY`) tulevad keskkonnamuutujatest.
+`backend/src/main/resources/application.properties` — andmebaas, sessioonid, `revkassa.*` seaded. Saladused (PIN-i võti, SMTP parool, `GOOGLE_API_KEY`) tulevad keskkonnamuutujatest.
 
 ## Andmebaas
 

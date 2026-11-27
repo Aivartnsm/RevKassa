@@ -528,11 +528,31 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
 
 ## Verstapost 8 — AI abiline (valikuline)
 
-- [ ] **B31 · Abilise klient** (M) — pärast B30
-  Lisa `com.anthropic:anthropic-java`. `EventAssistant` liides (`infrastructure/ai/`);
-  `AnthropicEventAssistant`, kui `ANTHROPIC_API_KEY` on seatud (mudel `revkassa.ai.model`,
-  vaikimisi `claude-sonnet-5-5`, max tokenid ja aegumine konfiguratsioonist), muidu
+- [x] **B31 · Abilise klient** (M) — pärast B30
+  Lisa `com.google.genai:google-genai`. `EventAssistant` liides (`infrastructure/ai/`);
+  `GeminiEventAssistant`, kui `GOOGLE_API_KEY` on seatud (mudel `revkassa.ai.model`,
+  vaikimisi `gemini-3.5-flash-lite`, max tokenid ja aegumine konfiguratsioonist), muidu
   `DisabledEventAssistant`. `GET /api/admin/assistant/status`.
+  Otsused (eelvaade 2026-11-27; teenusepakkuja vahetatud Anthropicult Google Geminile samal päeval):
+  - SDK `com.google.genai:google-genai:2.6.0` (vajab Java 17+, projektis 21). Abiline lülitub sisse **ainult**
+    selgesõnaliselt seatud `GOOGLE_API_KEY`-ga (`revkassa.ai.api-key=${GOOGLE_API_KEY:}`); klient ehitatakse
+    `Client.builder().apiKey(...)`-ga, mitte argumentideta `new Client()`-iga, mis loeks keskkonda ise.
+  - `EventAssistant`: `isEnabled()` ja `ask(systemPrompt, userPrompt)` → vastuse tekst + tokenite arv.
+    `DisabledEventAssistant.ask` keeldub (võrku ei minda kunagi).
+  - Seaded (`application.properties`, üle kirjutatavad): mudel `gemini-3.5-flash-lite` (stabiilne; Google soovitab
+    uutele projektidele seda või Gemini 4 Hydrogenit), `max-output-tokens` 4000, aegumine 60 s, kordusi 1
+    (UI: "Abiline ei vastanud").
+  - Vastuse kuju `{answer, suggestedLines:[{category, description, plannedCents}]}` nõutakse JSON-režiimiga
+    (`responseMimeType("application/json")` + `responseSchema`); B32 jätab siiski "vigane JSON → ainult tekst"
+    varulahenduse (vastus võib tokenilimiidil katkeda).
+  - Andmekasutus (Gemini API tingimused, kehtivad 23.03.2026): tasuta kvoodi päringuid võib Google kasutada toodete
+    parendamiseks ja inimesed võivad neid lugeda; arveldusega Cloudi projekti (tasuline) päringuid mitte. EMP
+    kasutajatele kehtivad tasulise teenuse reeglid ka tasuta kvoodile. Kasutajal on arveldusega (ettemaksuga) projekti
+    võti → tasuline teenus. Prompt ei sisalda niikuinii isikuandmeid (B32).
+  - Kui ettemaks saab otsa, vastab API veaga: abiline näitab "Abiline ei vastanud" (staatus jääb `enabled: true`,
+    sest võti on seatud); logisse läheb veakood ilma promptita, et admin näeks põhjust.
+  - Logi: käivitusel ainult "sees/väljas, mudel"; võtit, prompti ega vastust ei logita kunagi.
+  - Testid ainult võlts-abilisega; päris API-t testides ega kontrollimisel ei kutsuta.
   Valmis, kui: võtmega/võtmeta valitakse õige bean; võtmeta → staatus `{enabled: false}`.
 
 - [ ] **B32 · Ürituse abilise endpoint** (M) — pärast B31
@@ -553,7 +573,7 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   Valmis, kui: `./gradlew bootJar` + `java -jar` serveerib UI-d ja API-t.
 
 - [ ] **B21 · Käivitamine ja varukoopiad** (S)
-  Tootmise profiil (saladused keskkonnast, k.a SMTP parool ja `ANTHROPIC_API_KEY`, turvalised
+  Tootmise profiil (saladused keskkonnast, k.a SMTP parool ja `GOOGLE_API_KEY`, turvalised
   küpsised k.a `REVKASSA_DEVICE`, `revkassa.app-url` HTTPS aadressiga), systemd unit, öine `pg_dump` taastamise kontrolliga. Tootmise andmebaas luuakse
   `2_create.sql`-iga (ilma `3_import.sql`-ita), hilisemad muudatused `docs/database/muudatused/`
   skriptidega. Dokumenteeri kausta `docs/`.
