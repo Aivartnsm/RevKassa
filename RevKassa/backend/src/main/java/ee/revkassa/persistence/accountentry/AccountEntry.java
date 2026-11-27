@@ -1,5 +1,6 @@
 package ee.revkassa.persistence.accountentry;
 
+import ee.revkassa.persistence.eventparticipant.EventParticipant;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.membershipcharge.MembershipCharge;
 import ee.revkassa.persistence.payment.Payment;
@@ -14,8 +15,6 @@ import java.time.OffsetDateTime;
 
 /**
  * One row of the money ledger. Rows are only added, never changed or deleted: a correction is a new row.
- * The links to membership charge and event participant are plain ids until those entities exist (B20, B22); each
- * becomes a relation then.
  */
 @Getter
 @Setter
@@ -53,8 +52,9 @@ public class AccountEntry {
     @JoinColumn(name = "membership_charge_id")
     private MembershipCharge membershipCharge;
 
-    @Column(name = "event_participant_id")
-    private Long eventParticipantId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_participant_id")
+    private EventParticipant eventParticipant;
 
     @Column(name = "note", length = Integer.MAX_VALUE)
     private String note;

@@ -53,6 +53,7 @@ public enum Error {
     EVENT_ALREADY_PUBLISHED("This event is already published.", 149),
     EVENT_NOT_PUBLISHED("This event is not published.", 150),
     EVENT_HAS_PARTICIPANTS("This event has participants and cannot be unpublished.", 151),
+    PARTICIPANT_NOT_ACTIVE("This member has already been removed from the event.", 152),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

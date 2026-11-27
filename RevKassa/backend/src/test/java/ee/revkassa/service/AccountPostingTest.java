@@ -1,6 +1,7 @@
 package ee.revkassa.service;
 
 import ee.revkassa.persistence.accountentry.AccountEntryTypeEnum;
+import ee.revkassa.persistence.eventparticipant.EventParticipant;
 import ee.revkassa.persistence.member.Member;
 import ee.revkassa.persistence.membershipcharge.MembershipCharge;
 import ee.revkassa.persistence.payment.Payment;
@@ -143,13 +144,12 @@ class AccountPostingTest {
 
     // A posting with the link the type needs and a note
     private AccountPosting valid(AccountEntryTypeEnum type, long amountCents) {
-        Long id = 1L;
         return switch (type.getLink()) {
             case NONE -> new AccountPosting(member, type, amountCents, null, null, null, null, "märkus", admin);
             case PURCHASE -> new AccountPosting(member, type, amountCents, new Purchase(), null, null, null, "märkus", member);
             case PAYMENT -> new AccountPosting(member, type, amountCents, null, new Payment(), null, null, "märkus", admin);
             case MEMBERSHIP_CHARGE -> new AccountPosting(member, type, amountCents, null, null, new MembershipCharge(), null, "märkus", null);
-            case EVENT_PARTICIPANT -> new AccountPosting(member, type, amountCents, null, null, null, id, "märkus", admin);
+            case EVENT_PARTICIPANT -> new AccountPosting(member, type, amountCents, null, null, null, new EventParticipant(), "märkus", admin);
         };
     }
 }

@@ -17,6 +17,11 @@ public class TestClock extends Clock {
         this.now = start;
     }
 
+    // The bean is shared by every test in the Spring context: a test that moves the clock sets its start first
+    public void set(Instant instant) {
+        now = instant;
+    }
+
     public void advance(Duration duration) {
         now = now.plus(duration);
     }

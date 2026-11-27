@@ -104,13 +104,17 @@ public class AccountEntryService {
             case ADJUSTMENT -> withNote(ADJUSTMENT, entry.getNote());
             case MEMBERSHIP_FEE -> MEMBERSHIP_FEE + NOTE_SEPARATOR + monthOf(entry);
             case MEMBERSHIP_FEE_WAIVER -> withNote(MEMBERSHIP_FEE_WAIVER + NOTE_SEPARATOR + monthOf(entry), entry.getNote());
-            case EVENT_FEE -> EVENT_FEE;
-            case EVENT_FEE_REVERSAL -> EVENT_FEE_REVERSAL;
+            case EVENT_FEE -> withNote(EVENT_FEE + NOTE_SEPARATOR + eventOf(entry), entry.getNote());
+            case EVENT_FEE_REVERSAL -> withNote(EVENT_FEE_REVERSAL + NOTE_SEPARATOR + eventOf(entry), entry.getNote());
         };
     }
 
     private static String monthOf(AccountEntry entry) {
         return MONTH_FORMAT.format(entry.getMembershipCharge().getMonth());
+    }
+
+    private static String eventOf(AccountEntry entry) {
+        return entry.getEventParticipant().getEvent().getName();
     }
 
     private static String withNote(String text, String note) {

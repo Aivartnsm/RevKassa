@@ -16,6 +16,9 @@ public class EventSummaryDto implements Serializable {
     private Boolean signupOpen;
     // Active participants only
     private long participantCount;
-    // Fees charged to the active participants
+    // The fees of the active participants, charged or not
     private long feeIncomeCents;
+    // Fee income minus planned costs, and minus the actual costs filled in so far
+    private long plannedResultCents;
+    private long actualResultCents;
 }

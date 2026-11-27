@@ -12,8 +12,8 @@ import java.time.OffsetDateTime;
 
 /**
  * A member on an event, with the level and fee copied when they joined (the price period of that day). The fee goes
- * to the balance only when an admin charges the event's fees (chargedAt). Only counted so far (B28); adding,
- * charging and removing come with B29.
+ * to the balance only when an admin charges the event's fees (chargedAt). Rows are never deleted: a removed member's
+ * row is REMOVED, and adding them again makes it ACTIVE with a new join time, level and fee.
  */
 @Getter
 @Setter
@@ -65,4 +65,17 @@ public class EventParticipant {
     // When the fee went to the balance; null = not charged yet
     @Column(name = "charged_at")
     private OffsetDateTime chargedAt;
+
+    public boolean isActive() {
+        return status == EventParticipantStatusEnum.ACTIVE;
+    }
+
+    public boolean isCharged() {
+        return chargedAt != null;
+    }
+
+    // Added by the member themselves, not by an admin
+    public boolean isSelfSignup() {
+        return addedBy.getId().equals(member.getId());
+    }
 }

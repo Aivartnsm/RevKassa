@@ -25,8 +25,14 @@ public class EventDto implements Serializable {
     private Long version;
     // Active participants only
     private long participantCount;
-    // Fees charged to the active participants
+    // The fees of the active participants, charged or not
     private long feeIncomeCents;
+    // Active participants whose fee has not gone to the balance yet, and the sum of those fees
+    private long unchargedCount;
+    private long unchargedCents;
     // Price periods, the one without a date (from the start) first, then by date. Always at least that one
     private List<EventFeePeriodDto> feePeriods;
+    // Active ones by name, then removed ones by name
+    private List<EventParticipantDto> participants;
+    private EventBudgetDto budget;
 }

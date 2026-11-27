@@ -313,10 +313,10 @@ AI abiline (valikuline)
 | `POST /api/admin/events/{id}/charge` | admin | "Võta tasud": kõigilt veel võtmata aktiivsetelt osalejatelt |
 | `POST /api/admin/events/{id}/close`, `/cancel` | admin | sulge (võtab järelejäänud tasud), või tühista ja tagasta võetud tasud |
 | `PUT /api/admin/events/{id}/fees` | admin | `{periods:[{validFrom, fees:[{levelId, amountCents}]}], version}` — asendab kogu tasutabeli (hinnaperioodid; puuduv tase = 0) |
-| `POST /api/admin/events/{id}/participants` | admin | `{memberIds:[...]}` → lisab osalejad tasuga (saldot veel ei muuda) |
+| `POST /api/admin/events/{id}/participants` | admin | `{memberIds:[...]}` → lisab osalejad tasuga (saldot veel ei muuda); vastus `{event, skipped:[{memberId, reason}]}` |
 | `PUT /api/admin/events/{id}/participants/{memberId}/fee` | admin | `{feeCents, note}` — muuda osaleja tasu (pärast võtmist kirjutab vahe) |
 | `DELETE /api/admin/events/{id}/participants/{memberId}` | admin | eemalda, tagastab tasu, kui see oli võetud |
-| `GET/POST/PUT/DELETE /api/admin/events/{id}/budget-lines` | admin | eelarveread |
+| `GET/POST/PUT/DELETE /api/admin/events/{id}/budget-lines` | admin | eelarveread; iga vastus on terve eelarve (kategooriad, `plannedResultCents`, `actualResultCents`, `missingActualCount`); tühistatud üritusel ainult lugemine |
 | `GET /api/admin/assistant/status` | admin | `{enabled}` |
 | `POST /api/admin/events/{id}/assistant` | admin | `{kind: BUDGET\|QUANTITIES\|RECIPE\|QUESTION, question}` → `{answer, suggestedLines}` |
 | `GET /api/admin/dashboard` | admin | ülevaate näitajad |

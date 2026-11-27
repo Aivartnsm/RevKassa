@@ -17,8 +17,12 @@ import ee.revkassa.persistence.event.Event;
 import ee.revkassa.persistence.event.EventMapper;
 import ee.revkassa.persistence.event.EventRepository;
 import ee.revkassa.persistence.event.EventStatusEnum;
+import ee.revkassa.persistence.eventbudgetline.BudgetTotal;
+import ee.revkassa.persistence.eventbudgetline.EventBudgetLineRepository;
 import ee.revkassa.persistence.eventlevelfee.EventLevelFee;
 import ee.revkassa.persistence.eventlevelfee.EventLevelFeeRepository;
+import ee.revkassa.persistence.eventparticipant.EventParticipant;
+import ee.revkassa.persistence.eventparticipant.EventParticipantMapper;
 import ee.revkassa.persistence.eventparticipant.EventParticipantRepository;
 import ee.revkassa.persistence.eventparticipant.ParticipantTotal;
 import ee.revkassa.persistence.member.MemberRepository;
@@ -48,7 +52,8 @@ import java.util.stream.Collectors;
  * Club events and their fee table (B28). A new event is a DRAFT that members do not see; publishing shows it to them
  * and only then can sign-up be opened. Only DRAFT and PUBLISHED events can be changed. Nothing is deleted: a mistaken
  * event is cancelled. The fee table has price periods (from a date on) with a fee per level; saving it raises the
- * event's version, so it conflicts with a parallel edit of the event like any other change.
+ * event's version, so it conflicts with a parallel edit of the event like any other change. Participants and their
+ * fees: EventParticipantService; the budget: EventBudgetService.
  */
 @Slf4j
 @Service
@@ -61,6 +66,9 @@ public class EventService {
     private final EventMapper eventMapper;
     private final EventLevelFeeRepository eventLevelFeeRepository;
     private final EventParticipantRepository eventParticipantRepository;
+    private final EventParticipantMapper eventParticipantMapper;
+    private final EventBudgetLineRepository eventBudgetLineRepository;
+    private final EventBudgetService eventBudgetService;
     private final MembershipLevelRepository membershipLevelRepository;
     private final MemberRepository memberRepository;
     private final Clock clock;
@@ -68,12 +76,17 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<EventSummaryDto> getEvents() {
         List<Event> events = eventRepository.findAllEvents();
-        Map<Long, ParticipantTotal> totals = participantTotalsOf(events.stream().map(Event::getId).toList());
+        List<Long> eventIds = events.stream().map(Event::getId).toList();
+        Map<Long, ParticipantTotal> totals = participantTotalsOf(eventIds);
+        Map<Long, BudgetTotal> budgets = budgetTotalsOf(eventIds);
         return events.stream()
-                .map(event -> toEventSummaryDto(event, totals))
+                .map(event -> toEventSummaryDto(event, totals, budgets))
                 .toList();
     }
 
+    /**
+     * The detail view, with the participants and fees not charged yet. Also the answer to every participant change.
+     */
     @Transactional(readOnly = true)
     public EventDto getEvent(Long eventId) {
         return toEventDto(getValidEventBy(eventId));
@@ -181,22 +194,44 @@ public class EventService {
                 .collect(Collectors.toMap(ParticipantTotal::eventId, Function.identity()));
     }
 
-    private EventSummaryDto toEventSummaryDto(Event event, Map<Long, ParticipantTotal> totals) {
+    // Events without budget lines have no row in the query result
+    private Map<Long, BudgetTotal> budgetTotalsOf(Collection<Long> eventIds) {
+        if (eventIds.isEmpty()) {
+            return Map.of();
+        }
+        return eventBudgetLineRepository.findTotals(eventIds).stream()
+                .collect(Collectors.toMap(BudgetTotal::eventId, Function.identity()));
+    }
+
+    private EventSummaryDto toEventSummaryDto(Event event, Map<Long, ParticipantTotal> totals,
+                                              Map<Long, BudgetTotal> budgets) {
         ParticipantTotal total = totals.getOrDefault(event.getId(), ParticipantTotal.none(event.getId()));
+        BudgetTotal budget = budgets.getOrDefault(event.getId(), BudgetTotal.none(event.getId()));
         EventSummaryDto dto = eventMapper.toEventSummaryDto(event);
         dto.setParticipantCount(total.participantCount());
         dto.setFeeIncomeCents(total.feeCents());
+        dto.setPlannedResultCents(total.feeCents() - budget.plannedCents());
+        dto.setActualResultCents(total.feeCents() - budget.actualCents());
         return dto;
     }
 
     private EventDto toEventDto(Event event) {
-        ParticipantTotal total = participantTotalsOf(List.of(event.getId()))
-                .getOrDefault(event.getId(), ParticipantTotal.none(event.getId()));
+        List<EventParticipant> participants = eventParticipantRepository.findEventParticipants(event.getId());
+        List<EventParticipant> active = participants.stream().filter(EventParticipant::isActive).toList();
+        List<EventParticipant> uncharged = active.stream().filter(participant -> !participant.isCharged()).toList();
         EventDto dto = eventMapper.toEventDto(event);
-        dto.setParticipantCount(total.participantCount());
-        dto.setFeeIncomeCents(total.feeCents());
+        dto.setParticipantCount(active.size());
+        dto.setFeeIncomeCents(feeSumOf(active));
+        dto.setUnchargedCount(uncharged.size());
+        dto.setUnchargedCents(feeSumOf(uncharged));
         dto.setFeePeriods(feePeriodsOf(event));
+        dto.setParticipants(eventParticipantMapper.toEventParticipantDtos(participants));
+        dto.setBudget(eventBudgetService.budgetOf(event.getId(), dto.getFeeIncomeCents()));
         return dto;
+    }
+
+    private static long feeSumOf(List<EventParticipant> participants) {
+        return participants.stream().mapToLong(EventParticipant::getFeeCents).sum();
     }
 
     /**
@@ -240,7 +275,7 @@ public class EventService {
         return dto;
     }
 
-    // ---- changing ----
+    // ---- changing (also used by EventParticipantService) ----
 
     private Event getValidEditableEventBy(Long eventId, Long requestVersion) {
         Event event = getValidEventBy(eventId);
@@ -249,18 +284,18 @@ public class EventService {
         return event;
     }
 
-    private Event getValidEventForUpdateBy(Long eventId) {
+    Event getValidEventForUpdateBy(Long eventId) {
         return eventRepository.findForUpdate(eventId)
                 .orElseThrow(() -> new PrimaryKeyNotFoundException(Error.ENTRY_NOT_FOUND));
     }
 
-    private static void validateEditable(Event event) {
+    static void validateEditable(Event event) {
         if (!event.isEditable()) {
             throw new ForbiddenException(Error.EVENT_NOT_EDITABLE);
         }
     }
 
-    private static void validatePublished(Event event) {
+    static void validatePublished(Event event) {
         validateEditable(event);
         if (event.getStatus() != EventStatusEnum.PUBLISHED) {
             throw new ForbiddenException(Error.EVENT_NOT_PUBLISHED);
@@ -281,7 +316,7 @@ public class EventService {
         }
     }
 
-    private void changeStatus(Event event, EventStatusEnum status) {
+    void changeStatus(Event event, EventStatusEnum status) {
         event.setStatus(status);
         event.setUpdatedAt(now());
         eventRepository.flush();

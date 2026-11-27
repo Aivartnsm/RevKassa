@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,9 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     @Query("select m from Member m join fetch m.level order by lower(m.displayName), m.id")
     List<Member> findAllMembers();
+
+    @Query("select m from Member m join fetch m.level where m.id in :ids")
+    List<Member> findWithLevels(Collection<Long> ids);
 
     // Row lock: one member's purchases run one after another (same request twice cannot both pass the check).
     // Lock order everywhere: member first, then products in id order

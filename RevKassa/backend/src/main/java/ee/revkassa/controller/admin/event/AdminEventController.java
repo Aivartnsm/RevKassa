@@ -7,6 +7,7 @@ import ee.revkassa.controller.admin.event.dto.EventSummaryDto;
 import ee.revkassa.controller.admin.event.dto.EventUpdateRequestDto;
 import ee.revkassa.infrastructure.error.ApiError;
 import ee.revkassa.infrastructure.security.MemberPrincipal;
+import ee.revkassa.service.EventParticipantService;
 import ee.revkassa.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -35,6 +36,7 @@ import java.util.List;
 public class AdminEventController {
 
     private final EventService eventService;
+    private final EventParticipantService eventParticipantService;
 
     @GetMapping
     @Operation(summary = "All events: draft and published ones first (soonest first), then closed and cancelled (newest first)",
@@ -198,5 +200,74 @@ public class AdminEventController {
     public EventDto unpublishEvent(@PathVariable Long eventId,
                                    @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
         return eventService.unpublishEvent(eventId, principal.memberId());
+    }
+
+    @PostMapping("/{eventId}/charge")
+    @Operation(summary = "Charge the fees of every active participant not charged yet (\"Võta tasud\")",
+            description = "Writes an EVENT_FEE row for each fee above 0; a fee of 0 only counts as charged. Can be "
+                    + "pressed again for participants added later. Published events only. Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Charged, with the detail view"),
+            @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Not published (150), closed or cancelled (148), not an admin password "
+                    + "session or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such event (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public EventDto chargeFees(@PathVariable Long eventId,
+                                @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return eventParticipantService.chargeFees(eventId, principal.memberId());
+    }
+
+    @PostMapping("/{eventId}/close")
+    @Operation(summary = "Close a published event after it took place",
+            description = "Charges the remaining fees, closes sign-up and locks the event: nothing can be changed any "
+                    + "more. Raises the event's version. Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Closed, with the detail view"),
+            @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Not published (150), closed or cancelled (148), not an admin password "
+                    + "session or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such event (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public EventDto closeEvent(@PathVariable Long eventId,
+                                @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return eventParticipantService.closeEvent(eventId, principal.memberId());
+    }
+
+    @PostMapping("/{eventId}/cancel")
+    @Operation(summary = "Cancel a draft or published event",
+            description = "Removes every active participant and returns the fees already charged "
+                    + "(EVENT_FEE_REVERSAL), closes sign-up. Raises the event's version. Needs the X-XSRF-TOKEN header.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Cancelled, with the detail view"),
+            @ApiResponse(responseCode = "400", description = "Malformed id (errorCode 104)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "401", description = "Session missing or expired (errorCode 115)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "403", description = "Closed or cancelled already (148), not an admin password "
+                    + "session or CSRF token missing (118)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "404", description = "No such event (101)",
+                    content = @Content(schema = @Schema(implementation = ApiError.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ApiError.class)))
+    })
+    public EventDto cancelEvent(@PathVariable Long eventId,
+                                @Parameter(hidden = true) @AuthenticationPrincipal MemberPrincipal principal) {
+        return eventParticipantService.cancelEvent(eventId, principal.memberId());
     }
 }

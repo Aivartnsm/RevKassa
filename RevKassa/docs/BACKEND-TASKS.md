@@ -464,18 +464,20 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   - Ülevaade: `upcomingEvents` — kuni 3 `DRAFT`/`PUBLISHED` üritust alates praegusest, varaseim ees, staatuse ja
     osalejate arvuga.
 
-- [ ] **B29 · Osalejad ja ürituse tasud** (L) — pärast B10, B28
+- [x] **B29 · Osalejad ja ürituse tasud** (L) — pärast B10, B28
   `POST /api/admin/events/{id}/participants {memberIds}` (1–200, kordused üks kord; `DRAFT`/`PUBLISHED`):
   liikme kohta kopeeri tase ja tasu **liitumise päeva hinnaperioodist** (Tallinna kuupäev), saldo ei muutu;
   üks transaktsioon, ürituse rida lukustatakse esimesena. Tundmatu liige → 404 (midagi ei lisata); mitteaktiivne
   (`MEMBER_NOT_ACTIVE`) ja juba aktiivne (`ALREADY_PARTICIPANT`) → vahele jäetud; `REMOVED` rida taas `ACTIVE`-iks
-  uue liitumisaja, taseme ja tasuga, `charged_at = null`. Vastus: ürituse detail + `skipped [{memberId, reason}]`.
+  uue liitumisaja, taseme ja tasuga, `charged_at = null`. Vastus: `{event: <ürituse detail>, skipped: [{memberId, reason}]}`.
   `POST …/charge` ("Võta tasud", ainult `PUBLISHED`): kõigile aktiivsetele `charged_at = null` osalejatele
   `EVENT_FEE` (kui > 0) ja `charged_at`; korduv vajutus võtab ainult hiljem lisatutelt.
   `PUT …/participants/{memberId}/fee {feeCents, note}`: enne võtmist muutub ainult `fee_cents`; pärast võtmist
   kirjutatakse vahe (`EVENT_FEE` või `EVENT_FEE_REVERSAL`, märkusega).
   `DELETE …/participants/{memberId}` → `REMOVED` (+ `EVENT_FEE_REVERSAL`, kui tasu oli võetud); juba eemaldatud →
-  403 `PARTICIPANT_NOT_ACTIVE`, pole osaleja → 404.
+  403 `PARTICIPANT_NOT_ACTIVE` (152; ka tasu muutmisel), pole osaleja → 404. Suletud/tühistatud üritusel kõik
+  osalejamuudatused → 403 `EVENT_NOT_EDITABLE` (148); "Võta tasud"/sulgemine mustandil → 403 `EVENT_NOT_PUBLISHED` (150).
+  `note` on valikuline (≤ 500) ja läheb ainult pärast võtmist kirjutatud reale.
   `POST …/close` (ainult `PUBLISHED`): võtab järelejäänud tasud, `CLOSED`, registreerimine kinni.
   `POST …/cancel` (`DRAFT`/`PUBLISHED`): kõik aktiivsed `REMOVED`, võetud tasud tagasi, `CANCELLED`.
   Detaili lisandub `participants` [{memberId, displayName, levelName, feeCents, status, charged, selfSignup,
@@ -486,9 +488,18 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   tasu võtmine (ka korduv), tasu muutmine enne/pärast võtmist, tasu 0, sulgemine, tühistamine, osaleja invariant ja
   saldo invariant on testitud.
 
-- [ ] **B30 · Ürituse eelarve** (S) — pärast B28
+- [x] **B30 · Ürituse eelarve** (S) — pärast B28
   `EventBudgetLine` entiteet, CRUD `/api/admin/events/{id}/budget-lines` all; kokkuvõtted
   kategooria kaupa (planeeritud, tegelik), tasudest laekuv ja tulemus ürituse detailis.
+  Otsused (eelvaade 2026-11-27):
+  - Ainult `CANCELLED` üritusel on eelarve loetav (muutmine → 403 `EVENT_NOT_EDITABLE` 148); `CLOSED` üritusel saab
+    ridu edasi muuta, sest tegelikud summad tulevad tšekkidelt sageli pärast sulgemist.
+  - Tasudest laekuv = kõigi aktiivsete osalejate tasude summa (võetud või mitte), sama mis `feeIncomeCents`.
+  - Kaks tulemust: `plannedResultCents` = laekuv − Σ planeeritud; `actualResultCents` = laekuv − Σ täidetud tegelikud;
+    lisaks `missingActualCount` (read, mille tegelik summa on tühi). Ürituste nimekirja kaart saab mõlemad tulemused.
+  - Kõik CRUD vastused tagastavad terve eelarve (read kategooriate kaupa fikseeritud järjekorras, kategooriate ja
+    kogusummad); sama `budget` objekt on ürituse detailis. Uus rida läheb oma kategooria lõppu; `source` (`MANUAL`
+    vaikimisi, `AI` B32 jaoks) määratakse ainult loomisel. Kirjeldus 1–200, summad 0–10 000 €, märkus ≤ 500.
   Valmis, kui: puuduvate tegelike summadega kokkuvõtted ja ainult loetavad olekud on testitud.
 
 - [ ] **B33 · Liikme registreerumine** (S) — pärast B29
