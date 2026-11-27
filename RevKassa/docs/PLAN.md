@@ -215,8 +215,9 @@ AI abiline (valikuline)
   võtit (tasuline teenus: päringuid ei kasutata Google'i toodete parendamiseks).
 - Ainult adminile, korraga ühe ürituse kohta. Kiirtegevused: "Eelarve mustand", "Kui palju
   osta", "Retsept N inimesele", lisaks vaba küsimus. Vastused on eesti keeles.
-- Päring sisaldab ainult ürituse andmeid: nimi, kuupäev, osalejate arv taseme kaupa, praegused
-  eelarveread ja admini küsimus. **Mitte kunagi liikmete nimesid, e-posti ega saldosid.**
+- Päring sisaldab ainult ürituse andmeid: nimi, kuupäev, kirjeldus, osalejate arv taseme kaupa, praegused
+  eelarveread (ilma märkusteta) ja admini küsimus. **Mitte kunagi liikmete nimesid, e-posti ega saldosid.**
+  Kirjeldus on vaba tekst: admin ei kirjuta sinna nimesid (abilise paneel ütleb, et kirjeldus saadetakse).
 - Vastus tuleb tekstina koos soovitatud eelarveridadega (struktureeritud JSON). Igal
   ettepanekul on "Lisa eelarvesse"; midagi ei lisata automaatselt. Vastu võetud read
   märgitakse AI-ks.
@@ -319,7 +320,7 @@ AI abiline (valikuline)
 | `DELETE /api/admin/events/{id}/participants/{memberId}` | admin | eemalda, tagastab tasu, kui see oli võetud |
 | `GET/POST/PUT/DELETE /api/admin/events/{id}/budget-lines` | admin | eelarveread; iga vastus on terve eelarve (kategooriad, `plannedResultCents`, `actualResultCents`, `missingActualCount`); tühistatud üritusel ainult lugemine |
 | `GET /api/admin/assistant/status` | admin | `{enabled}` |
-| `POST /api/admin/events/{id}/assistant` | admin | `{kind: BUDGET\|QUANTITIES\|RECIPE\|QUESTION, question}` → `{answer, suggestedLines}` |
+| `POST /api/admin/events/{id}/assistant` | admin | `{kind: BUDGET\|QUANTITIES\|RECIPE\|QUESTION, question}` → `{answer, suggestedLines, structured, remainingToday}`; 20 päringut admini kohta päevas |
 | `GET /api/admin/dashboard` | admin | ülevaate näitajad |
 | `GET /api/admin/reports/sales?from=&to=` | admin | müüdud tükid, tulu, ostuhind ja marginaal toote (ja kuu) kaupa kuupäevade vahemikus (Tallinna aeg, mõlemad kaasa arvatud; mõlemad valikulised) |
 

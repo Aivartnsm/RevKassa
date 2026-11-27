@@ -278,7 +278,10 @@ Põhireeglid (vt [frontendi struktuur](frontend/projekti-struktuur.md) ja
   Näidatakse ainult siis, kui `GET /api/admin/assistant/status` ütleb, et sees. Külgpaneel
   eelarve juures: kiirnupud (Eelarve mustand · Kui palju osta · Retsept N inimesele), vaba
   küsimus, vastuse tekst, soovitatud read igaüks nupuga "Lisa eelarvesse". Märkus, et saadetakse
-  ainult ürituse andmed ja ettepanekuid tuleb kontrollida. Laadimise ja vea olekud; nupp
+  ainult ürituse andmed (k.a kirjeldus — ära kirjuta sinna nimesid) ja ettepanekuid tuleb kontrollida. Näita
+  "Täna jäänud N küsimust" (`remainingToday`). Vead: 156 → "Abiline pole seadistatud", 157 → "Abiline ei vastanud",
+  158 → "Tänased küsimused on otsas, proovi homme". Vastus ja ettepanekud näidatakse **ainult lihttekstina**
+  (`{{ }}`, mitte kunagi `v-html`), sest need on mudeli väljund. Laadimise ja vea olekud; nupp
   keelatud küsimise ajal.
 
 ## Verstapost 9 — Väljalase

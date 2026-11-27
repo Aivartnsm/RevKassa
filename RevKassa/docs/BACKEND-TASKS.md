@@ -555,13 +555,33 @@ implementatsiooniplaan skilliga `skill-loo-backed-taski-implementatsiooni-plaan`
   - Testid ainult võlts-abilisega; päris API-t testides ega kontrollimisel ei kutsuta.
   Valmis, kui: võtmega/võtmeta valitakse õige bean; võtmeta → staatus `{enabled: false}`.
 
-- [ ] **B32 · Ürituse abilise endpoint** (M) — pärast B31
+- [x] **B32 · Ürituse abilise endpoint** (M) — pärast B31
   `POST /api/admin/events/{id}/assistant {kind, question}`. Eestikeelne prompt ehitatakse
   ainult ürituse nimest, kuupäevast, osalejatest taseme kaupa, eelarveridadest ja küsimusest —
   **ilma liikmete nimede, e-posti ja saldodeta**. Küsib JSON-i `{answer, suggestedLines:[{category,
   description, plannedCents}]}`; vigane JSON → ainult vastuse tekst. 20 päringut admini kohta
   päevas (mälus), logi kes/millal/tokenid, mitte kunagi prompti. Ettepaneku vastuvõtmine
   kasutab tavalist eelarverea POST-i `source: AI`-ga.
+  Otsused (eelvaade 2026-11-27):
+  - `kind`: `BUDGET` | `QUANTITIES` | `RECIPE` | `QUESTION`; `question` ≤ 1000 märki, kohustuslik ainult `QUESTION`-il.
+    `RECIPE`: roa valib Gemini (küsimus on valikuline soov), inimeste arv = aktiivsete osalejate arv; kui osalejaid
+    pole, palutakse retsept 10 inimesele ja prompt ütleb seda.
+  - Promptis: ürituse nimi, algus, **kirjeldus**, aktiivsete osalejate arv taseme kaupa ja kokku, eelarveread
+    (kategooria, kirjeldus, planeeritud, tegelik) ja küsimus. **Ei saadeta:** asukohta, eelarveridade märkusi, liikmete
+    nimesid, e-posti, saldosid ega seda, kes osaleb. Test kontrollib prompti ürituse päris osalejate andmete vastu.
+  - Vastus: `{answer, suggestedLines, structured, remainingToday}`. Vigane JSON → `answer` = toortekst,
+    `suggestedLines` tühi, `structured: false`. Ettepanekud puhastatakse: vigased (tundmatu kategooria, tühi
+    kirjeldus, summa < 0 või > 10 000 €) jäetakse välja, kirjeldus ≤ 200 märki, kuni 10 rida.
+  - Päevalimiit 20 admini kohta Tallinna päevas (mälus): loetakse iga Geminile saadetud päring (ka ebaõnnestunud ja
+    aegunud, sest needki võivad maksta); enne saatmist tagasi lükatud (valideerimine, tühistatud üritus, abiline
+    väljas) ei loe. Üle limiidi → 429 `ASSISTANT_DAILY_LIMIT` (158), `Retry-After` Tallinna keskööni.
+  - Tühistatud üritus → 403 148 (nagu eelarve); abiline väljas → 503 156; Gemini viga → 503 157.
+  - Logi: admini id, ürituse id, `kind`, sisend- ja väljundtokenid; prompti ega vastust mitte kunagi.
+  - Kaitsed (lisatud eelvaate järel): (1) vaba tekst (kirjeldus, eelarveridade kirjeldused, küsimus) on promptis
+    märgendite vahel ja süsteemiprompt ütleb, et see on ainult andmed, mitte juhised; märgendite endi tekst
+    eemaldatakse vabast tekstist; (2) ainult selle ürituse planeerimine eesti keeles, muu peale üks lause keeldumist;
+    (3) summad on hinnangud, hindu ei leiutata, oletus öeldakse välja; (4) F26 näitab vastust ainult lihttekstina.
+    Teist "nõuandja" mudelit ei kasutata: üks päring, tööriistu pole, admin kinnitab iga ettepaneku ise.
   Valmis, kui: võlts-abilisega testid kontrollivad, et prompt ei sisalda isikuandmeid, JSON-i
   varulahendust, päevalimiiti ja väljalülitatud olekut.
 

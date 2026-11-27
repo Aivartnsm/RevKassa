@@ -59,6 +59,7 @@ public enum Error {
     SIGNUP_NEEDS_PASSWORD("Sign up after logging in with your email and password.", 155),
     ASSISTANT_DISABLED("The event assistant is not configured.", 156),
     ASSISTANT_FAILED("The event assistant did not answer. Try again later.", 157),
+    ASSISTANT_DAILY_LIMIT("Your daily limit of event assistant questions is used up. Try again tomorrow.", 158),
     UNEXPECTED_ERROR("Something went wrong, try again", 500);
 
     private final String message;

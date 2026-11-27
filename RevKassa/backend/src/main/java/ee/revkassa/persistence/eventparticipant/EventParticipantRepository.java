@@ -16,6 +16,12 @@ public interface EventParticipantRepository extends JpaRepository<EventParticipa
             + "from EventParticipant p where p.event.id in :eventIds and p.status = " + ACTIVE + " group by p.event.id")
     List<ParticipantTotal> findActiveTotals(Collection<Long> eventIds);
 
+    // Counts only, no names: what the AI assistant may know about who comes (levels in their own order)
+    @Query("select new ee.revkassa.persistence.eventparticipant.LevelCount(l.name, count(p)) "
+            + "from EventParticipant p join p.level l where p.event.id = :eventId and p.status = " + ACTIVE
+            + " group by l.id, l.name, l.sortOrder order by l.sortOrder, l.id")
+    List<LevelCount> findActiveLevelCounts(Long eventId);
+
     // Active ones by name, then removed ones by name
     @Query("select p from EventParticipant p join fetch p.member m join fetch p.level join fetch p.addedBy "
             + "where p.event.id = :eventId "
